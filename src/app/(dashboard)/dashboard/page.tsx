@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
-import { NetWorthProjectionChart } from "@/components/charts/NetWorthProjectionChart";
+import { MonthlyBudgetChart } from "@/components/charts/MonthlyBudgetChart";
 import { formatCurrency } from "@/lib/utils";
 
 interface Account {
@@ -14,41 +14,49 @@ interface Account {
   currentBalance: string;
 }
 
-interface ProjectionDataPoint {
+interface TrendlineDataPoint {
   date: string;
-  actual?: number;
-  projected?: number;
-  isToday?: boolean;
+  unit: number;
+  label: string;
+  income: number;
+  rent: number;
+  savings: number;
+  actual: number | null;
 }
+
+type TimePeriod = "daily" | "weekly" | "biweekly" | "monthly";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [projectionData, setProjectionData] = useState<ProjectionDataPoint[]>([]);
-  const [currentBalance, setCurrentBalance] = useState(0);
+  const [trendlineData, setTrendlineData] = useState<TrendlineDataPoint[]>([]);
+  const [currentUnit, setCurrentUnit] = useState(1);
+  const [period, setPeriod] = useState<TimePeriod>("monthly");
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
     monthlySpending: 0,
-    monthlyIncome: 0,
+    availableToday: 0,
+    dailyIncome: 0,
+    todaySpending: 0,
   });
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [period]);
 
   async function fetchData() {
     try {
-      const [accountsRes, configRes, projectionRes, spendingRes] = await Promise.all([
+      const [accountsRes, configRes, budgetRes, spendingRes] = await Promise.all([
         fetch("/api/accounts"),
         fetch("/api/income-config"),
-        fetch("/api/analytics/projection?daysBack=30&daysForward=60"),
+        fetch(`/api/analytics/monthly-budget?period=${period}`),
         fetch("/api/analytics/spending?period=monthly"),
       ]);
 
       const accountsData = await accountsRes.json();
       const configData = await configRes.json();
-      const projectionResData = await projectionRes.json();
+      const budgetData = await budgetRes.json();
       const spendingData = await spendingRes.json();
 
       setAccounts(accountsData.accounts || []);
@@ -58,13 +66,15 @@ export default function DashboardPage() {
         setShowOnboarding(true);
       }
 
-      setProjectionData(projectionResData.projectionData || []);
-      setCurrentBalance(projectionResData.currentBalance || 0);
+      setTrendlineData(budgetData.trendlineData || []);
+      setCurrentUnit(budgetData.currentUnit || 1);
 
       // Calculate stats
       setStats({
         monthlySpending: spendingData.totalSpending || 0,
-        monthlyIncome: configData.config?.projectedMonthlyIncome || 0,
+        availableToday: budgetData.availableToday || 0,
+        dailyIncome: budgetData.dailyIncome || 0,
+        todaySpending: budgetData.todaySpending || 0,
       });
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -129,34 +139,60 @@ export default function DashboardPage() {
             description="This month"
             color="red"
           />
-          <StatCard
-            title="Monthly Income"
-            value={formatCurrency(stats.monthlyIncome)}
-            description="Projected"
-            color="green"
+          <AvailableTodayCard
+            availableToday={stats.availableToday}
+            dailyIncome={stats.dailyIncome}
+            todaySpending={stats.todaySpending}
           />
           <StatCard
             title="Net Worth"
-            value={formatCurrency(currentBalance)}
+            value={formatCurrency(totals.assets - totals.liabilities)}
             description="Assets - Liabilities"
             color="purple"
           />
         </div>
 
-        {/* Net Worth Projection Chart */}
-        {projectionData.length > 0 && (
-          <div className="rounded-lg bg-white p-6 shadow">
-            <div className="mb-4">
+        {/* Budget Trendlines Chart */}
+        <div className="rounded-lg bg-white p-6 shadow">
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
               <h3 className="text-lg font-semibold text-gray-900">
-                Net Worth Projection
+                Budget Progress
               </h3>
               <p className="text-sm text-gray-600">
-                Actual spending (past) vs projected balance (future, assuming no spending)
+                Track your spending against income, rent/utilities, and savings goals
               </p>
             </div>
-            <NetWorthProjectionChart data={projectionData} height={350} />
+            {/* Period Selector */}
+            <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
+              {(["daily", "weekly", "biweekly", "monthly"] as TimePeriod[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    period === p
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  {p === "biweekly" ? "2 Week" : p.charAt(0).toUpperCase() + p.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
+          {trendlineData.length > 0 ? (
+            <MonthlyBudgetChart
+              data={trendlineData}
+              currentUnit={currentUnit}
+              period={period}
+              height={350}
+            />
+          ) : (
+            <div className="flex h-[350px] items-center justify-center text-gray-500">
+              No budget data available. Complete onboarding to set up your income and goals.
+            </div>
+          )}
+        </div>
 
         {/* Connect Bank CTA - Only show if no accounts */}
         {accounts.length === 0 && (
@@ -238,6 +274,34 @@ function StatCard({
       </div>
       <p className="mt-4 text-2xl font-bold text-gray-900">{value}</p>
       <p className="mt-1 text-sm text-gray-500">{description}</p>
+    </div>
+  );
+}
+
+function AvailableTodayCard({
+  availableToday,
+  dailyIncome,
+  todaySpending,
+}: {
+  availableToday: number;
+  dailyIncome: number;
+  todaySpending: number;
+}) {
+  const isPositive = availableToday >= 0;
+  const colorClass = isPositive ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600";
+  const valueColor = isPositive ? "text-green-600" : "text-red-600";
+
+  return (
+    <div className="rounded-lg bg-white p-6 shadow">
+      <div className={`inline-flex rounded-lg p-2 ${colorClass}`}>
+        <span className="text-sm font-medium">Available Today</span>
+      </div>
+      <p className={`mt-4 text-2xl font-bold ${valueColor}`}>
+        {formatCurrency(availableToday)}
+      </p>
+      <p className="mt-1 text-sm text-gray-500">
+        {formatCurrency(dailyIncome)} daily - {formatCurrency(todaySpending)} spent
+      </p>
     </div>
   );
 }

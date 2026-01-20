@@ -1,0 +1,304 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { startOfMonth, endOfMonth, startOfDay } from "@/lib/utils";
+
+type TimePeriod = "daily" | "weekly" | "biweekly" | "monthly";
+
+export async function GET(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const period = (searchParams.get("period") || "monthly") as TimePeriod;
+
+    // Get income config
+    const incomeConfig = await prisma.incomeConfig.findUnique({
+      where: { userId: session.user.id },
+    });
+
+    if (!incomeConfig) {
+      return NextResponse.json({
+        trendlineData: [],
+        monthlyIncome: 0,
+        rentAmount: 0,
+        utilitiesAmount: 0,
+        savingsGoal: 0,
+        availableToday: 0,
+      });
+    }
+
+    const monthlyIncome = Number(incomeConfig.projectedMonthlyIncome || 0);
+    const rentAmount = Number(incomeConfig.rentAmount || 0);
+    const utilitiesAmount = Number(incomeConfig.utilitiesAmount || 0);
+    const savingsGoalRaw = Number(incomeConfig.monthlySavingsGoal || 0);
+    const savingsIsPercent = incomeConfig.savingsIsPercent;
+
+    // Calculate actual savings goal
+    const savingsGoal = savingsIsPercent
+      ? (monthlyIncome * savingsGoalRaw) / 100
+      : savingsGoalRaw;
+
+    // Fixed costs (rent + utilities)
+    const fixedCosts = rentAmount + utilitiesAmount;
+
+    const today = new Date();
+    const todayStart = startOfDay(today);
+
+    // Determine time period boundaries and units
+    let periodStart: Date;
+    let periodEnd: Date;
+    let totalUnits: number;
+    let currentUnit: number;
+    let unitLabel: string;
+
+    // Calculate pro-rated income for the period
+    let periodIncome: number;
+    let periodFixedCosts: number;
+    let periodSavingsGoal: number;
+
+    switch (period) {
+      case "daily": {
+        // Daily view - by hour (24 hours)
+        periodStart = todayStart;
+        periodEnd = new Date(todayStart);
+        periodEnd.setHours(23, 59, 59, 999);
+        totalUnits = 24;
+        currentUnit = today.getHours();
+        unitLabel = "hour";
+        // Daily amounts
+        const daysInMonth = endOfMonth(today).getDate();
+        periodIncome = monthlyIncome / daysInMonth;
+        periodFixedCosts = fixedCosts / daysInMonth;
+        periodSavingsGoal = savingsGoal / daysInMonth;
+        break;
+      }
+      case "weekly": {
+        // Weekly view - 7 days
+        periodStart = new Date(today);
+        periodStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+        periodStart.setHours(0, 0, 0, 0);
+        periodEnd = new Date(periodStart);
+        periodEnd.setDate(periodStart.getDate() + 6);
+        periodEnd.setHours(23, 59, 59, 999);
+        totalUnits = 7;
+        currentUnit = today.getDay();
+        unitLabel = "day";
+        // Weekly amounts (monthly / ~4.33 weeks)
+        periodIncome = monthlyIncome / 4.33;
+        periodFixedCosts = fixedCosts / 4.33;
+        periodSavingsGoal = savingsGoal / 4.33;
+        break;
+      }
+      case "biweekly": {
+        // Biweekly view - 14 days
+        // Find the start of current 2-week period (aligned to start of month for simplicity)
+        const monthStart = startOfMonth(today);
+        const dayOfMonth = today.getDate();
+        const biweeklyPeriod = Math.floor((dayOfMonth - 1) / 14);
+        periodStart = new Date(monthStart);
+        periodStart.setDate(1 + biweeklyPeriod * 14);
+        periodEnd = new Date(periodStart);
+        periodEnd.setDate(periodStart.getDate() + 13);
+        // Cap at end of month
+        const monthEnd = endOfMonth(today);
+        if (periodEnd > monthEnd) periodEnd = monthEnd;
+        totalUnits = 14;
+        currentUnit = Math.floor((today.getTime() - periodStart.getTime()) / (24 * 60 * 60 * 1000));
+        unitLabel = "day";
+        // Biweekly amounts (monthly / 2)
+        periodIncome = monthlyIncome / 2;
+        periodFixedCosts = fixedCosts / 2;
+        periodSavingsGoal = savingsGoal / 2;
+        break;
+      }
+      case "monthly":
+      default: {
+        // Monthly view - days in month
+        periodStart = startOfMonth(today);
+        periodEnd = endOfMonth(today);
+        totalUnits = periodEnd.getDate();
+        currentUnit = today.getDate();
+        unitLabel = "day";
+        // Full monthly amounts
+        periodIncome = monthlyIncome;
+        periodFixedCosts = fixedCosts;
+        periodSavingsGoal = savingsGoal;
+        break;
+      }
+    }
+
+    // Get expenses for the period
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        userId: session.user.id,
+        date: {
+          gte: periodStart,
+          lte: periodEnd,
+        },
+        isIncome: false,
+      },
+      orderBy: { date: "asc" },
+    });
+
+    // Daily income rate for the period
+    const incomePerUnit = periodIncome / totalUnits;
+
+    // Build trendline data
+    interface TrendlinePoint {
+      date: string;
+      unit: number;
+      label: string;
+      income: number;
+      rent: number;
+      savings: number;
+      actual: number | null;
+    }
+
+    const trendlineData: TrendlinePoint[] = [];
+
+    // Target amounts at end of period
+    // Income line: goes from 0 to full period income
+    // Rent line: goes from 0 to fixed costs (rent + utilities) - this is what you need to set aside
+    // Savings line: goes from 0 to fixed costs + savings goal - total you need to set aside
+    const incomeTarget = periodIncome;
+    const rentTarget = periodFixedCosts;
+    const savingsTarget = periodFixedCosts + periodSavingsGoal;
+
+    // Group expenses by unit
+    const expensesByUnit: Record<number, number> = {};
+    for (const t of transactions) {
+      const transactionDate = new Date(t.date);
+      let unit: number;
+      if (period === "daily") {
+        unit = transactionDate.getHours();
+      } else if (period === "weekly") {
+        unit = transactionDate.getDay();
+      } else if (period === "biweekly") {
+        unit = Math.floor((transactionDate.getTime() - periodStart.getTime()) / (24 * 60 * 60 * 1000));
+      } else {
+        unit = transactionDate.getDate();
+      }
+      const amount = Math.abs(Number(t.amount));
+      expensesByUnit[unit] = (expensesByUnit[unit] || 0) + amount;
+    }
+
+    let cumulativeExpenses = 0;
+
+    for (let unit = period === "monthly" ? 1 : 0; unit <= (period === "monthly" ? totalUnits : totalUnits - 1); unit++) {
+      const unitIndex = period === "monthly" ? unit : unit + 1;
+
+      // Calculate trendline values (linear from 0 to target)
+      const progress = unitIndex / totalUnits;
+      const incomeValue = incomeTarget * progress;
+      const rentValue = rentTarget * progress;
+      const savingsValue = savingsTarget * progress;
+
+      // Generate label
+      let label: string;
+      let dateStr: string;
+      if (period === "daily") {
+        label = `${unit}:00`;
+        const d = new Date(todayStart);
+        d.setHours(unit);
+        dateStr = d.toISOString();
+      } else if (period === "weekly") {
+        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        label = dayNames[unit];
+        const d = new Date(periodStart);
+        d.setDate(periodStart.getDate() + unit);
+        dateStr = d.toISOString().split("T")[0];
+      } else if (period === "biweekly") {
+        const d = new Date(periodStart);
+        d.setDate(periodStart.getDate() + unit);
+        label = `${d.getMonth() + 1}/${d.getDate()}`;
+        dateStr = d.toISOString().split("T")[0];
+      } else {
+        const d = new Date(periodStart);
+        d.setDate(unit);
+        label = `${d.getMonth() + 1}/${unit}`;
+        dateStr = d.toISOString().split("T")[0];
+      }
+
+      // Calculate actual (only for past/current units)
+      let actualValue: number | null = null;
+      const isCurrentOrPast = period === "monthly" ? unit <= currentUnit : unit <= currentUnit;
+
+      if (isCurrentOrPast) {
+        const expenseKey = period === "monthly" ? unit : unit;
+        cumulativeExpenses += expensesByUnit[expenseKey] || 0;
+        const cumulativeIncome = incomePerUnit * unitIndex;
+        actualValue = cumulativeIncome - cumulativeExpenses;
+      }
+
+      trendlineData.push({
+        date: dateStr,
+        unit: period === "monthly" ? unit : unit,
+        label,
+        income: Math.round(incomeValue * 100) / 100,
+        rent: Math.round(rentValue * 100) / 100,
+        savings: Math.round(savingsValue * 100) / 100,
+        actual: actualValue !== null ? Math.round(actualValue * 100) / 100 : null,
+      });
+    }
+
+    // Calculate available to spend today
+    // Deduct fixed expenses (rent + utilities) and savings before amortizing
+    const daysInMonth = endOfMonth(today).getDate();
+    const spendableIncome = monthlyIncome - fixedCosts - savingsGoal;
+    const dailyIncome = spendableIncome / daysInMonth;
+
+    // Get today's expenses
+    const todayEnd = new Date(todayStart);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const todayTransactions = await prisma.transaction.findMany({
+      where: {
+        userId: session.user.id,
+        date: {
+          gte: todayStart,
+          lte: todayEnd,
+        },
+        isIncome: false,
+      },
+    });
+
+    const todaySpending = todayTransactions.reduce(
+      (sum, t) => sum + Math.abs(Number(t.amount)),
+      0
+    );
+
+    const availableToday = dailyIncome - todaySpending;
+
+    return NextResponse.json({
+      trendlineData,
+      period,
+      totalUnits,
+      currentUnit,
+      unitLabel,
+      monthlyIncome,
+      rentAmount,
+      utilitiesAmount,
+      savingsGoal,
+      availableToday: Math.round(availableToday * 100) / 100,
+      dailyIncome: Math.round(dailyIncome * 100) / 100,
+      todaySpending: Math.round(todaySpending * 100) / 100,
+      targets: {
+        income: incomeTarget,
+        rent: rentTarget,
+        savings: savingsTarget,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching monthly budget data:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch monthly budget data" },
+      { status: 500 }
+    );
+  }
+}
