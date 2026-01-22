@@ -24,6 +24,8 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAccounts();
@@ -50,6 +52,21 @@ export default function AccountsPage() {
       console.error("Error syncing:", error);
     } finally {
       setIsSyncing(false);
+    }
+  }
+
+  async function deleteAccount(id: string) {
+    setDeletingId(id);
+    try {
+      const response = await fetch(`/api/accounts/${id}`, { method: "DELETE" });
+      if (response.ok) {
+        setAccounts(accounts.filter((a) => a.id !== id));
+      }
+    } catch (error) {
+      console.error("Error deleting account:", error);
+    } finally {
+      setDeletingId(null);
+      setConfirmDelete(null);
     }
   }
 
@@ -182,19 +199,47 @@ export default function AccountsPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p
-                      className={`text-lg font-semibold ${
-                        account.type === "CREDIT" || account.type === "LOAN"
-                          ? "text-red-600"
-                          : "text-gray-900"
-                      }`}
-                    >
-                      {formatCurrency(Number(account.currentBalance || 0))}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {account.type.toLowerCase().replace("_", " ")}
-                    </p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p
+                        className={`text-lg font-semibold ${
+                          account.type === "CREDIT" || account.type === "LOAN"
+                            ? "text-red-600"
+                            : "text-gray-900"
+                        }`}
+                      >
+                        {formatCurrency(Number(account.currentBalance || 0))}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {account.type.toLowerCase().replace("_", " ")}
+                      </p>
+                    </div>
+                    {/* Delete Button */}
+                    {confirmDelete === account.id ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => deleteAccount(account.id)}
+                          disabled={deletingId === account.id}
+                          className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {deletingId === account.id ? "Removing..." : "Confirm"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(null)}
+                          className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDelete(account.id)}
+                        className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                        title="Remove account"
+                      >
+                        <TrashIcon />
+                      </button>
+                    )}
                   </div>
                 </div>
               </li>
@@ -240,6 +285,19 @@ function WalletIcon() {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
       />
     </svg>
   );
