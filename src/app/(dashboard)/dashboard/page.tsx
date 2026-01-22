@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { MonthlyBudgetChart } from "@/components/charts/MonthlyBudgetChart";
+import { BudgetProjectionLineChart } from "@/components/charts/BudgetProjectionLineChart";
 import { formatCurrency } from "@/lib/utils";
 
 interface Account {
@@ -31,7 +32,13 @@ export default function DashboardPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [trendlineData, setTrendlineData] = useState<TrendlineDataPoint[]>([]);
   const [currentUnit, setCurrentUnit] = useState(1);
+  const [totalUnits, setTotalUnits] = useState(1);
   const [period, setPeriod] = useState<TimePeriod>("monthly");
+  const [budgetTargets, setBudgetTargets] = useState({
+    income: 0,
+    rent: 0,
+    savings: 0,
+  });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -68,6 +75,8 @@ export default function DashboardPage() {
 
       setTrendlineData(budgetData.trendlineData || []);
       setCurrentUnit(budgetData.currentUnit || 1);
+      setTotalUnits(budgetData.totalUnits || 1);
+      setBudgetTargets(budgetData.targets || { income: 0, rent: 0, savings: 0 });
 
       // Calculate stats
       setStats({
@@ -181,12 +190,27 @@ export default function DashboardPage() {
             </div>
           </div>
           {trendlineData.length > 0 ? (
-            <MonthlyBudgetChart
-              data={trendlineData}
-              currentUnit={currentUnit}
-              period={period}
-              height={350}
-            />
+            <>
+              <MonthlyBudgetChart
+                data={trendlineData}
+                currentUnit={currentUnit}
+                period={period}
+                height={350}
+              />
+              {/* Budget Projection Chart */}
+              <div className="mt-6 border-t border-gray-200 pt-6">
+                <h4 className="mb-4 text-sm font-medium text-gray-700">Balance Projection</h4>
+                <BudgetProjectionLineChart
+                  trendlineData={trendlineData}
+                  currentUnit={currentUnit}
+                  totalUnits={totalUnits}
+                  rentUtilities={budgetTargets.rent}
+                  savingsTarget={budgetTargets.savings}
+                  incomePerUnit={budgetTargets.income / totalUnits}
+                  height={250}
+                />
+              </div>
+            </>
           ) : (
             <div className="flex h-[350px] items-center justify-center text-gray-500">
               No budget data available. Complete onboarding to set up your income and goals.

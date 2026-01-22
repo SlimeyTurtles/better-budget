@@ -133,7 +133,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // Get expenses for the period
+    // Get all transactions for the period (both income and expenses)
     const transactions = await prisma.transaction.findMany({
       where: {
         userId: session.user.id,
@@ -141,12 +141,11 @@ export async function GET(request: Request) {
           gte: periodStart,
           lte: periodEnd,
         },
-        isIncome: false,
       },
       orderBy: { date: "asc" },
     });
 
-    // Daily income rate for the period
+    // Daily income rate for the period (projected/amortized)
     const incomePerUnit = periodIncome / totalUnits;
 
     // Build trendline data
@@ -170,8 +169,10 @@ export async function GET(request: Request) {
     const rentTarget = periodFixedCosts;
     const savingsTarget = periodFixedCosts + periodSavingsGoal;
 
-    // Group expenses by unit
+    // Group transactions by unit (separate income and expenses)
+    // Extra income = income transactions that are NOT salary (salary is already in projected income)
     const expensesByUnit: Record<number, number> = {};
+    const extraIncomeByUnit: Record<number, number> = {};
     for (const t of transactions) {
       const transactionDate = new Date(t.date);
       let unit: number;
@@ -185,10 +186,19 @@ export async function GET(request: Request) {
         unit = transactionDate.getDate();
       }
       const amount = Math.abs(Number(t.amount));
-      expensesByUnit[unit] = (expensesByUnit[unit] || 0) + amount;
+      if (t.isIncome) {
+        // Exclude salary income (already accounted for in projected income)
+        const category = (t.category || "").toLowerCase();
+        if (category !== "salary") {
+          extraIncomeByUnit[unit] = (extraIncomeByUnit[unit] || 0) + amount;
+        }
+      } else {
+        expensesByUnit[unit] = (expensesByUnit[unit] || 0) + amount;
+      }
     }
 
     let cumulativeExpenses = 0;
+    let cumulativeExtraIncome = 0;
 
     for (let unit = period === "monthly" ? 1 : 0; unit <= (period === "monthly" ? totalUnits : totalUnits - 1); unit++) {
       const unitIndex = period === "monthly" ? unit : unit + 1;
@@ -230,10 +240,12 @@ export async function GET(request: Request) {
       const isCurrentOrPast = period === "monthly" ? unit <= currentUnit : unit <= currentUnit;
 
       if (isCurrentOrPast) {
-        const expenseKey = period === "monthly" ? unit : unit;
-        cumulativeExpenses += expensesByUnit[expenseKey] || 0;
-        const cumulativeIncome = incomePerUnit * unitIndex;
-        actualValue = cumulativeIncome - cumulativeExpenses;
+        const unitKey = period === "monthly" ? unit : unit;
+        cumulativeExpenses += expensesByUnit[unitKey] || 0;
+        cumulativeExtraIncome += extraIncomeByUnit[unitKey] || 0;
+        // Amortized projected income + extra income (non-salary) - expenses
+        const amortizedIncome = incomePerUnit * unitIndex;
+        actualValue = amortizedIncome + cumulativeExtraIncome - cumulativeExpenses;
       }
 
       trendlineData.push({

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { AddTransactionModal } from "@/components/transactions/AddTransactionModal";
+import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";
 
 interface Transaction {
   id: string;
@@ -12,6 +14,7 @@ interface Transaction {
   category: string | null;
   isIncome: boolean;
   isPending: boolean;
+  isManual: boolean;
   bankAccount: {
     name: string;
     mask: string | null;
@@ -23,6 +26,8 @@ export default function TransactionsPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   useEffect(() => {
     fetchTransactions();
@@ -46,6 +51,10 @@ export default function TransactionsPage() {
     if (filter === "expense") return !t.isIncome;
     return true;
   });
+
+  function handleDeleteTransaction(id: string) {
+    setTransactions(transactions.filter((t) => t.id !== id));
+  }
 
   // Calculate summary
   const summary = transactions.reduce(
@@ -72,11 +81,32 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          View and manage your transaction history
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            View and manage your transaction history
+          </p>
+        </div>
+        <button
+          onClick={() => setIsAddModalOpen(true)}
+          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          Add Transaction
+        </button>
       </div>
 
       {/* Summary Cards */}
@@ -181,22 +211,49 @@ export default function TransactionsPage() {
                       </p>
                     </div>
                   </div>
-                  <p
-                    className={`text-lg font-semibold ${
-                      transaction.isIncome || Number(transaction.amount) < 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {transaction.isIncome || Number(transaction.amount) < 0 ? "+" : "-"}
-                    {formatCurrency(Math.abs(Number(transaction.amount)))}
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <p
+                      className={`text-lg font-semibold ${
+                        transaction.isIncome || Number(transaction.amount) < 0
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {transaction.isIncome || Number(transaction.amount) < 0 ? "+" : "-"}
+                      {formatCurrency(Math.abs(Number(transaction.amount)))}
+                    </p>
+                    {transaction.isManual && (
+                      <button
+                        onClick={() => setEditingTransaction(transaction)}
+                        className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
+                        title="Edit transaction"
+                      >
+                        <EditIcon />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </li>
             ))}
           </ul>
         </div>
       )}
+
+      {/* Add Transaction Modal */}
+      <AddTransactionModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={fetchTransactions}
+      />
+
+      {/* Edit Transaction Modal */}
+      <EditTransactionModal
+        transaction={editingTransaction}
+        isOpen={editingTransaction !== null}
+        onClose={() => setEditingTransaction(null)}
+        onSuccess={fetchTransactions}
+        onDelete={handleDeleteTransaction}
+      />
     </div>
   );
 }
@@ -213,6 +270,14 @@ function ArrowDownIcon() {
   return (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
     </svg>
   );
 }

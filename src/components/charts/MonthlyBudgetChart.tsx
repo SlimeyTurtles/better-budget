@@ -142,45 +142,45 @@ export function MonthlyBudgetChart({
           }}
         />
 
-        {/* Income trendline (green) - total income goal */}
+        {/* Income trendline (purple) - total income goal */}
         <Line
           type="linear"
           dataKey="income"
           name="income"
-          stroke="#22c55e"
-          strokeWidth={2}
-          dot={false}
-          connectNulls={true}
-        />
-
-        {/* Rent + Utilities trendline (blue) */}
-        <Line
-          type="linear"
-          dataKey="rent"
-          name="rent"
-          stroke="#3b82f6"
-          strokeWidth={2}
-          dot={false}
-          connectNulls={true}
-        />
-
-        {/* Rent + Utilities + Savings trendline (purple) */}
-        <Line
-          type="linear"
-          dataKey="savings"
-          name="savings"
           stroke="#8b5cf6"
           strokeWidth={2}
           dot={false}
           connectNulls={true}
         />
 
-        {/* Actual balance line (orange) */}
+        {/* Rent + Utilities trendline (red) */}
+        <Line
+          type="linear"
+          dataKey="rent"
+          name="rent"
+          stroke="#ef4444"
+          strokeWidth={2}
+          dot={false}
+          connectNulls={true}
+        />
+
+        {/* Rent + Utilities + Savings trendline (blue) */}
+        <Line
+          type="linear"
+          dataKey="savings"
+          name="savings"
+          stroke="#3b82f6"
+          strokeWidth={2}
+          dot={false}
+          connectNulls={true}
+        />
+
+        {/* Actual balance line (green) */}
         <Line
           type="monotone"
           dataKey="actual"
           name="actual"
-          stroke="#f97316"
+          stroke="#22c55e"
           strokeWidth={3}
           dot={false}
           connectNulls={false}
