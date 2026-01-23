@@ -29,6 +29,7 @@ interface MonthlyBudgetChartProps {
   data: TrendlineDataPoint[];
   currentUnit: number;
   period: TimePeriod;
+  incomePerUnit: number;
   height?: number;
 }
 
@@ -36,6 +37,7 @@ export function MonthlyBudgetChart({
   data,
   currentUnit,
   period,
+  incomePerUnit,
   height = 400,
 }: MonthlyBudgetChartProps) {
   if (data.length === 0) {
@@ -48,6 +50,24 @@ export function MonthlyBudgetChart({
       </div>
     );
   }
+
+  // Get current actual balance
+  const currentActual = data.find((d) => d.unit === currentUnit)?.actual ?? 0;
+
+  // Add projected values to data (starting from current unit)
+  const chartData = data.map((point) => {
+    let projected: number | null = null;
+
+    if (point.unit >= currentUnit && currentActual !== null) {
+      const unitsFromCurrent = point.unit - currentUnit;
+      projected = currentActual + (incomePerUnit * unitsFromCurrent);
+    }
+
+    return {
+      ...point,
+      projected,
+    };
+  });
 
   // Get x-axis label based on period
   const getXAxisLabel = () => {
@@ -77,7 +97,7 @@ export function MonthlyBudgetChart({
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+      <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
         <XAxis
           dataKey="label"
@@ -105,6 +125,7 @@ export function MonthlyBudgetChart({
               rent: "Rent + Utilities",
               savings: "Rent + Utilities + Savings",
               actual: "Actual Balance",
+              projected: "Projected (No Spending)",
             };
             return [formatCurrency(Number(value)), labels[name] || name];
           }}
@@ -122,6 +143,7 @@ export function MonthlyBudgetChart({
               rent: "Rent + Utilities",
               savings: "Rent + Utilities + Savings",
               actual: "Actual Balance",
+              projected: "Projected (No Spending)",
             };
             return labels[value] || value;
           }}
@@ -184,6 +206,18 @@ export function MonthlyBudgetChart({
           strokeWidth={3}
           dot={false}
           connectNulls={false}
+        />
+
+        {/* Projected balance line (green dotted) - shows if no spending */}
+        <Line
+          type="linear"
+          dataKey="projected"
+          name="projected"
+          stroke="#22c55e"
+          strokeWidth={2}
+          strokeDasharray="5 5"
+          dot={false}
+          connectNulls={true}
         />
       </ComposedChart>
     </ResponsiveContainer>

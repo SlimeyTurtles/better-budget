@@ -44,7 +44,8 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({
     monthlySpending: 0,
     availableToday: 0,
-    dailyIncome: 0,
+    availablePerDay: 0,
+    availableToSpendTotal: 0,
     todaySpending: 0,
   });
 
@@ -82,7 +83,8 @@ export default function DashboardPage() {
       setStats({
         monthlySpending: spendingData.totalSpending || 0,
         availableToday: budgetData.availableToday || 0,
-        dailyIncome: budgetData.dailyIncome || 0,
+        availablePerDay: budgetData.availablePerDay || 0,
+        availableToSpendTotal: budgetData.availableToSpendTotal || 0,
         todaySpending: budgetData.todaySpending || 0,
       });
     } catch (error) {
@@ -150,7 +152,8 @@ export default function DashboardPage() {
           />
           <AvailableTodayCard
             availableToday={stats.availableToday}
-            dailyIncome={stats.dailyIncome}
+            availablePerDay={stats.availablePerDay}
+            availableToSpendTotal={stats.availableToSpendTotal}
             todaySpending={stats.todaySpending}
           />
           <StatCard
@@ -195,6 +198,7 @@ export default function DashboardPage() {
                 data={trendlineData}
                 currentUnit={currentUnit}
                 period={period}
+                incomePerUnit={budgetTargets.income / totalUnits}
                 height={350}
               />
               {/* Budget Projection Chart */}
@@ -304,16 +308,20 @@ function StatCard({
 
 function AvailableTodayCard({
   availableToday,
-  dailyIncome,
+  availablePerDay,
+  availableToSpendTotal,
   todaySpending,
 }: {
   availableToday: number;
-  dailyIncome: number;
+  availablePerDay: number;
+  availableToSpendTotal: number;
   todaySpending: number;
 }) {
   const isPositive = availableToday >= 0;
+  const isTotalPositive = availableToSpendTotal >= 0;
   const colorClass = isPositive ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600";
   const valueColor = isPositive ? "text-green-600" : "text-red-600";
+  const totalColor = isTotalPositive ? "text-green-600" : "text-red-600";
 
   return (
     <div className="rounded-lg bg-white p-6 shadow">
@@ -324,8 +332,14 @@ function AvailableTodayCard({
         {formatCurrency(availableToday)}
       </p>
       <p className="mt-1 text-sm text-gray-500">
-        {formatCurrency(dailyIncome)} daily - {formatCurrency(todaySpending)} spent
+        {formatCurrency(availablePerDay)}/day - {formatCurrency(todaySpending)} spent
       </p>
+      <div className="mt-3 border-t border-gray-100 pt-3">
+        <p className="text-xs text-gray-500">Available til end of month</p>
+        <p className={`text-lg font-semibold ${totalColor}`}>
+          {formatCurrency(availableToSpendTotal)}
+        </p>
+      </div>
     </div>
   );
 }

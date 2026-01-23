@@ -146,7 +146,7 @@ export async function GET(request: Request) {
     });
 
     // Daily income rate for the period (projected/amortized)
-    const incomePerUnit = periodIncome / totalUnits;
+    const incomePerUnit = totalUnits > 0 ? periodIncome / totalUnits : 0;
 
     // Build trendline data
     interface TrendlinePoint {
@@ -259,13 +259,28 @@ export async function GET(request: Request) {
       });
     }
 
-    // Calculate available to spend today
-    // Deduct fixed expenses (rent + utilities) and savings before amortizing
-    const daysInMonth = endOfMonth(today).getDate();
-    const spendableIncome = monthlyIncome - fixedCosts - savingsGoal;
-    const dailyIncome = spendableIncome / daysInMonth;
+    // Calculate available to spend based on projected end-of-month balance
+    // 1. Get current actual balance
+    const currentDataPoint = trendlineData.find((d) => d.unit === currentUnit);
+    const currentActualBalance = currentDataPoint?.actual !== null && currentDataPoint?.actual !== undefined
+      ? currentDataPoint.actual
+      : 0;
 
-    // Get today's expenses
+    // 2. Calculate remaining income from now to end of period
+    const remainingUnits = totalUnits - currentUnit;
+    const remainingIncome = isNaN(incomePerUnit) ? 0 : incomePerUnit * remainingUnits;
+
+    // 3. Projected balance at end of period (if no more spending)
+    const projectedEndBalance = currentActualBalance + remainingIncome;
+
+    // 4. Available to spend = projected end balance - savings target (rent + utilities + savings)
+    const availableToSpendTotal = projectedEndBalance - savingsTarget;
+
+    // 5. Available per day = total available / remaining days (including today)
+    const remainingDaysIncludingToday = Math.max(1, remainingUnits + 1);
+    const availablePerDay = availableToSpendTotal / remainingDaysIncludingToday;
+
+    // Get today's expenses for display
     const todayEnd = new Date(todayStart);
     todayEnd.setHours(23, 59, 59, 999);
 
@@ -285,7 +300,8 @@ export async function GET(request: Request) {
       0
     );
 
-    const availableToday = dailyIncome - todaySpending;
+    // Available today = daily budget - what you've already spent today
+    const availableToday = availablePerDay - todaySpending;
 
     return NextResponse.json({
       trendlineData,
@@ -298,8 +314,11 @@ export async function GET(request: Request) {
       utilitiesAmount,
       savingsGoal,
       availableToday: Math.round(availableToday * 100) / 100,
-      dailyIncome: Math.round(dailyIncome * 100) / 100,
+      availablePerDay: Math.round(availablePerDay * 100) / 100,
+      availableToSpendTotal: Math.round(availableToSpendTotal * 100) / 100,
       todaySpending: Math.round(todaySpending * 100) / 100,
+      projectedEndBalance: Math.round(projectedEndBalance * 100) / 100,
+      currentActualBalance: Math.round(currentActualBalance * 100) / 100,
       targets: {
         income: incomeTarget,
         rent: rentTarget,
