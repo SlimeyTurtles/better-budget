@@ -6,6 +6,7 @@ import Link from "next/link";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { MonthlyBudgetChart } from "@/components/charts/MonthlyBudgetChart";
 import { BudgetProjectionLineChart } from "@/components/charts/BudgetProjectionLineChart";
+import { EmergencyFundCard } from "@/components/goals/EmergencyFundCard";
 import { formatCurrency } from "@/lib/utils";
 
 interface Account {
@@ -48,6 +49,13 @@ export default function DashboardPage() {
     availableToSpendTotal: 0,
     todaySpending: 0,
   });
+  const [emergencyFund, setEmergencyFund] = useState({
+    targetAmount: 1000,
+    currentAmount: 0,
+    progressPercent: 0,
+    daysUntilGoal: null as number | null,
+    dailySavingsRate: 0,
+  });
 
   useEffect(() => {
     fetchData();
@@ -55,17 +63,19 @@ export default function DashboardPage() {
 
   async function fetchData() {
     try {
-      const [accountsRes, configRes, budgetRes, spendingRes] = await Promise.all([
+      const [accountsRes, configRes, budgetRes, spendingRes, emergencyFundRes] = await Promise.all([
         fetch("/api/accounts"),
         fetch("/api/income-config"),
         fetch(`/api/analytics/monthly-budget?period=${period}`),
         fetch("/api/analytics/spending?period=monthly"),
+        fetch("/api/savings-goals/emergency-fund"),
       ]);
 
       const accountsData = await accountsRes.json();
       const configData = await configRes.json();
       const budgetData = await budgetRes.json();
       const spendingData = await spendingRes.json();
+      const emergencyFundData = await emergencyFundRes.json();
 
       setAccounts(accountsData.accounts || []);
 
@@ -86,6 +96,15 @@ export default function DashboardPage() {
         availablePerDay: budgetData.availablePerDay || 0,
         availableToSpendTotal: budgetData.availableToSpendTotal || 0,
         todaySpending: budgetData.todaySpending || 0,
+      });
+
+      // Set emergency fund data
+      setEmergencyFund({
+        targetAmount: emergencyFundData.targetAmount || 1000,
+        currentAmount: emergencyFundData.currentAmount || 0,
+        progressPercent: emergencyFundData.progressPercent || 0,
+        daysUntilGoal: emergencyFundData.daysUntilGoal,
+        dailySavingsRate: emergencyFundData.dailySavingsRate || 0,
       });
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -156,11 +175,21 @@ export default function DashboardPage() {
             availableToSpendTotal={stats.availableToSpendTotal}
             todaySpending={stats.todaySpending}
           />
-          <StatCard
-            title="Net Worth"
-            value={formatCurrency(totals.assets - totals.liabilities)}
-            description="Assets - Liabilities"
-            color="purple"
+          <EmergencyFundCard
+            targetAmount={emergencyFund.targetAmount}
+            currentAmount={emergencyFund.currentAmount}
+            progressPercent={emergencyFund.progressPercent}
+            daysUntilGoal={emergencyFund.daysUntilGoal}
+            dailySavingsRate={emergencyFund.dailySavingsRate}
+            onUpdate={(newCurrent, newTarget) => {
+              setEmergencyFund((prev) => ({
+                ...prev,
+                currentAmount: newCurrent,
+                targetAmount: newTarget,
+                progressPercent: newTarget > 0 ? Math.min(100, Math.round((newCurrent / newTarget) * 100)) : 0,
+              }));
+              fetchData(); // Refresh to get updated days until goal
+            }}
           />
         </div>
 

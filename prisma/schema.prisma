@@ -27,6 +27,7 @@ model User {
   incomeConfig      IncomeConfig?
   budgetGoals       BudgetGoal[]
   netWorthSnapshots NetWorthSnapshot[]
+  savingsGoals      SavingsGoal[]
 }
 
 model Account {
@@ -236,4 +237,24 @@ model NetWorthSnapshot {
 
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+// ============ Savings Goals ============
+model SavingsGoal {
+  id     String @id @default(cuid())
+  userId String
+
+  name          String   // "Emergency Fund", "Vacation", etc.
+  targetAmount  Decimal  @db.Decimal(19, 4)
+  currentAmount Decimal  @db.Decimal(19, 4) @default(0)
+  targetDate    DateTime? @db.Date
+  isComplete    Boolean  @default(false)
+  isPrimary     Boolean  @default(false) // Primary goal shown on dashboard
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
