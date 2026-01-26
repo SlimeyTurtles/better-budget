@@ -96,8 +96,8 @@ export default function IncomeSettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Income Configuration</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Income Configuration</h1>
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
           Set up your income and monthly obligations for budget projections
         </p>
       </div>
@@ -125,24 +125,24 @@ export default function IncomeSettingsPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="rounded-lg bg-red-50 p-4 text-red-600">{error}</div>
+          <div className="rounded-lg bg-red-50 dark:bg-red-900/30 p-4 text-red-600 dark:text-red-400">{error}</div>
         )}
         {success && (
-          <div className="rounded-lg bg-green-50 p-4 text-green-600">
+          <div className="rounded-lg bg-green-50 dark:bg-green-900/30 p-4 text-green-600 dark:text-green-400">
             Settings saved successfully!
           </div>
         )}
 
         {/* Income Section */}
-        <div className="rounded-lg bg-white p-6 shadow">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">Income</h2>
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Income</h2>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Monthly Income
               </label>
               <div className="relative mt-1">
-                <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                <span className="absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">$</span>
                 <input
                   type="number"
                   value={config.projectedMonthlyIncome || ""}
@@ -152,17 +152,17 @@ export default function IncomeSettingsPage() {
                       projectedMonthlyIncome: Number(e.target.value),
                     })
                   }
-                  className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-3 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 pl-8 pr-3 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="5000"
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Your projected monthly income for amortized calculations
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Pay Frequency
               </label>
               <select
@@ -173,7 +173,7 @@ export default function IncomeSettingsPage() {
                     payFrequency: e.target.value as IncomeConfig["payFrequency"],
                   })
                 }
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="WEEKLY">Weekly</option>
                 <option value="BIWEEKLY">Bi-weekly</option>
@@ -183,7 +183,7 @@ export default function IncomeSettingsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Next Pay Date
               </label>
               <input
@@ -192,38 +192,38 @@ export default function IncomeSettingsPage() {
                 onChange={(e) =>
                   setConfig({ ...config, nextPayDate: e.target.value })
                 }
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
           </div>
         </div>
 
         {/* Obligations Section */}
-        <div className="rounded-lg bg-white p-6 shadow">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
             Monthly Obligations
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Rent / Housing
               </label>
               <div className="relative mt-1">
-                <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                <span className="absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">$</span>
                 <input
                   type="number"
                   value={config.rentAmount || ""}
                   onChange={(e) =>
                     setConfig({ ...config, rentAmount: Number(e.target.value) })
                   }
-                  className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-3 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 pl-8 pr-3 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="1500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Rent Due Day
               </label>
               <input
@@ -234,17 +234,17 @@ export default function IncomeSettingsPage() {
                 onChange={(e) =>
                   setConfig({ ...config, rentDueDay: Number(e.target.value) })
                 }
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="1"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Monthly Savings Goal
               </label>
               <div className="relative mt-1">
-                <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                <span className="absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">$</span>
                 <input
                   type="number"
                   value={config.monthlySavingsGoal || ""}
@@ -254,11 +254,11 @@ export default function IncomeSettingsPage() {
                       monthlySavingsGoal: Number(e.target.value),
                     })
                   }
-                  className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-3 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 pl-8 pr-3 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="500"
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Amount you want to save each month
               </p>
             </div>
@@ -270,7 +270,7 @@ export default function IncomeSettingsPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             Cancel
           </button>

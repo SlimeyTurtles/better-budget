@@ -83,8 +83,8 @@ export default function TransactionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
-          <p className="mt-1 text-sm text-gray-600">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             View and manage your transaction history
           </p>
         </div>
@@ -111,25 +111,25 @@ export default function TransactionsPage() {
 
       {/* Summary Cards */}
       <div className="grid gap-6 md:grid-cols-3">
-        <div className="rounded-lg bg-white p-6 shadow">
-          <p className="text-sm font-medium text-gray-600">Total Income</p>
-          <p className="mt-2 text-2xl font-bold text-green-600">
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Income</p>
+          <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">
             {formatCurrency(summary.income)}
           </p>
         </div>
-        <div className="rounded-lg bg-white p-6 shadow">
-          <p className="text-sm font-medium text-gray-600">Total Expenses</p>
-          <p className="mt-2 text-2xl font-bold text-red-600">
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Expenses</p>
+          <p className="mt-2 text-2xl font-bold text-red-600 dark:text-red-400">
             {formatCurrency(summary.expenses)}
           </p>
         </div>
-        <div className="rounded-lg bg-white p-6 shadow">
-          <p className="text-sm font-medium text-gray-600">Net</p>
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Net</p>
           <p
             className={`mt-2 text-2xl font-bold ${
               summary.income - summary.expenses >= 0
-                ? "text-green-600"
-                : "text-red-600"
+                ? "text-green-600 dark:text-green-400"
+                : "text-red-600 dark:text-red-400"
             }`}
           >
             {formatCurrency(summary.income - summary.expenses)}
@@ -144,7 +144,7 @@ export default function TransactionsPage() {
           className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
             filter === "all"
               ? "bg-blue-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
           }`}
         >
           All ({total})
@@ -154,7 +154,7 @@ export default function TransactionsPage() {
           className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
             filter === "income"
               ? "bg-green-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
           }`}
         >
           Income
@@ -164,7 +164,7 @@ export default function TransactionsPage() {
           className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
             filter === "expense"
               ? "bg-red-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
           }`}
         >
           Expenses
@@ -173,21 +173,21 @@ export default function TransactionsPage() {
 
       {/* Transactions List */}
       {filteredTransactions.length === 0 ? (
-        <div className="rounded-lg bg-white p-12 text-center shadow">
-          <p className="text-gray-500">No transactions found.</p>
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-12 text-center shadow">
+          <p className="text-gray-500 dark:text-gray-400">No transactions found.</p>
         </div>
       ) : (
-        <div className="rounded-lg bg-white shadow">
-          <ul className="divide-y divide-gray-200">
+        <div className="rounded-lg bg-white dark:bg-gray-800 shadow">
+          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
             {filteredTransactions.map((transaction) => (
-              <li key={transaction.id} className="p-4 hover:bg-gray-50">
+              <li key={transaction.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-full ${
                         transaction.isIncome || Number(transaction.amount) < 0
-                          ? "bg-green-100 text-green-600"
-                          : "bg-red-100 text-red-600"
+                          ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400"
+                          : "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
                       }`}
                     >
                       {transaction.isIncome || Number(transaction.amount) < 0 ? (
@@ -197,15 +197,15 @@ export default function TransactionsPage() {
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-gray-900 dark:text-white">
                         {transaction.merchantName || transaction.name}
                         {transaction.isPending && (
-                          <span className="ml-2 rounded bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
+                          <span className="ml-2 rounded bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 text-xs text-yellow-800 dark:text-yellow-400">
                             Pending
                           </span>
                         )}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         {formatDate(transaction.date)} • {transaction.bankAccount.name}
                         {transaction.category && ` • ${transaction.category}`}
                       </p>
@@ -215,8 +215,8 @@ export default function TransactionsPage() {
                     <p
                       className={`text-lg font-semibold ${
                         transaction.isIncome || Number(transaction.amount) < 0
-                          ? "text-green-600"
-                          : "text-red-600"
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400"
                       }`}
                     >
                       {transaction.isIncome || Number(transaction.amount) < 0 ? "+" : "-"}
@@ -225,7 +225,7 @@ export default function TransactionsPage() {
                     {transaction.isManual && (
                       <button
                         onClick={() => setEditingTransaction(transaction)}
-                        className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
+                        className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400"
                         title="Edit transaction"
                       >
                         <EditIcon />

@@ -64,9 +64,9 @@ export function EmergencyFundCard({
   };
 
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
+    <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
       <div className="flex items-center justify-between">
-        <div className="inline-flex rounded-lg bg-emerald-50 p-2 text-emerald-600">
+        <div className="inline-flex rounded-lg bg-emerald-50 dark:bg-emerald-900/30 p-2 text-emerald-600 dark:text-emerald-400">
           <span className="text-sm font-medium">Emergency Fund</span>
         </div>
         <button
@@ -77,7 +77,7 @@ export function EmergencyFundCard({
             }
             setIsEditing(!isEditing);
           }}
-          className="text-xs text-gray-500 hover:text-gray-700"
+          className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
         >
           {isEditing ? "Cancel" : "Edit"}
         </button>
@@ -86,24 +86,24 @@ export function EmergencyFundCard({
       {isEditing ? (
         <div className="mt-4 space-y-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Current Amount</label>
+            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Current Amount</label>
             <input
               type="number"
               value={editCurrentAmount}
               onChange={(e) => setEditCurrentAmount(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+              className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-emerald-500 focus:outline-none"
               placeholder="0"
               min="0"
               step="0.01"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Target Amount</label>
+            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Target Amount</label>
             <input
               type="number"
               value={editTargetAmount}
               onChange={(e) => setEditTargetAmount(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+              className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-emerald-500 focus:outline-none"
               placeholder="1000"
               min="1"
               step="0.01"
@@ -122,10 +122,10 @@ export function EmergencyFundCard({
           {/* Progress amount */}
           <div className="mt-4">
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-bold text-gray-900">
+              <span className="text-2xl font-bold text-gray-900 dark:text-white">
                 {formatCurrency(currentAmount)}
               </span>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
                 / {formatCurrency(targetAmount)}
               </span>
             </div>
@@ -133,7 +133,7 @@ export function EmergencyFundCard({
 
           {/* Progress bar */}
           <div className="mt-3">
-            <div className="h-3 w-full overflow-hidden rounded-full bg-gray-200">
+            <div className="h-3 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
                   isComplete
@@ -149,19 +149,19 @@ export function EmergencyFundCard({
                 style={{ width: `${Math.min(100, progressPercent)}%` }}
               />
             </div>
-            <div className="mt-1 flex justify-between text-xs text-gray-500">
+            <div className="mt-1 flex justify-between text-xs text-gray-500 dark:text-gray-400">
               <span>{progressPercent}% complete</span>
               <span>{formatCurrency(Math.max(0, targetAmount - currentAmount))} to go</span>
             </div>
           </div>
 
           {/* Days until goal */}
-          <div className="mt-3 border-t border-gray-100 pt-3">
-            <p className={`text-sm font-medium ${isComplete ? "text-emerald-600" : "text-gray-700"}`}>
+          <div className="mt-3 border-t border-gray-100 dark:border-gray-700 pt-3">
+            <p className={`text-sm font-medium ${isComplete ? "text-emerald-600 dark:text-emerald-400" : "text-gray-700 dark:text-gray-300"}`}>
               {formatDaysUntilGoal()}
             </p>
             {!isComplete && dailySavingsRate > 0 && (
-              <p className="mt-0.5 text-xs text-gray-500">
+              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                 at {formatCurrency(dailySavingsRate)}/day savings rate
               </p>
             )}

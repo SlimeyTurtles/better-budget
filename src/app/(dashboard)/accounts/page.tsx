@@ -97,8 +97,8 @@ export default function AccountsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-          <p className="mt-1 text-sm text-gray-600">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Accounts</h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             Manage your connected bank accounts
           </p>
         </div>
@@ -107,7 +107,7 @@ export default function AccountsPage() {
             <button
               onClick={syncTransactions}
               disabled={isSyncing}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
             >
               {isSyncing ? "Syncing..." : "Sync Transactions"}
             </button>
@@ -119,25 +119,25 @@ export default function AccountsPage() {
       {/* Summary Cards */}
       {accounts.length > 0 && (
         <div className="grid gap-6 md:grid-cols-3">
-          <div className="rounded-lg bg-white p-6 shadow">
-            <p className="text-sm font-medium text-gray-600">Total Assets</p>
-            <p className="mt-2 text-2xl font-bold text-green-600">
+          <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Assets</p>
+            <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">
               {formatCurrency(totals.assets)}
             </p>
           </div>
-          <div className="rounded-lg bg-white p-6 shadow">
-            <p className="text-sm font-medium text-gray-600">Total Liabilities</p>
-            <p className="mt-2 text-2xl font-bold text-red-600">
+          <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Liabilities</p>
+            <p className="mt-2 text-2xl font-bold text-red-600 dark:text-red-400">
               {formatCurrency(totals.liabilities)}
             </p>
           </div>
-          <div className="rounded-lg bg-white p-6 shadow">
-            <p className="text-sm font-medium text-gray-600">Net Worth</p>
+          <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Net Worth</p>
             <p
               className={`mt-2 text-2xl font-bold ${
                 totals.assets - totals.liabilities >= 0
-                  ? "text-green-600"
-                  : "text-red-600"
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400"
               }`}
             >
               {formatCurrency(totals.assets - totals.liabilities)}
@@ -148,8 +148,8 @@ export default function AccountsPage() {
 
       {/* Accounts List */}
       {accounts.length === 0 ? (
-        <div className="rounded-lg bg-white p-12 text-center shadow">
-          <div className="mx-auto h-12 w-12 text-gray-400">
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-12 text-center shadow">
+          <div className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
@@ -159,10 +159,10 @@ export default function AccountsPage() {
               />
             </svg>
           </div>
-          <h3 className="mt-4 text-lg font-medium text-gray-900">
+          <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
             No accounts connected
           </h3>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             Connect your bank accounts to start tracking your finances.
           </p>
           <div className="mt-6">
@@ -170,8 +170,8 @@ export default function AccountsPage() {
           </div>
         </div>
       ) : (
-        <div className="rounded-lg bg-white shadow">
-          <ul className="divide-y divide-gray-200">
+        <div className="rounded-lg bg-white dark:bg-gray-800 shadow">
+          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
             {accounts.map((account) => (
               <li key={account.id} className="p-6">
                 <div className="flex items-center justify-between">
@@ -179,8 +179,8 @@ export default function AccountsPage() {
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-full ${
                         account.type === "CREDIT" || account.type === "LOAN"
-                          ? "bg-red-100 text-red-600"
-                          : "bg-green-100 text-green-600"
+                          ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                          : "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400"
                       }`}
                     >
                       {account.type === "CREDIT" ? (
@@ -192,8 +192,8 @@ export default function AccountsPage() {
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{account.name}</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="font-medium text-gray-900 dark:text-white">{account.name}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         {account.plaidItem.institutionName || "Unknown Bank"}
                         {account.mask && ` •••• ${account.mask}`}
                       </p>
@@ -204,13 +204,13 @@ export default function AccountsPage() {
                       <p
                         className={`text-lg font-semibold ${
                           account.type === "CREDIT" || account.type === "LOAN"
-                            ? "text-red-600"
-                            : "text-gray-900"
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-gray-900 dark:text-white"
                         }`}
                       >
                         {formatCurrency(Number(account.currentBalance || 0))}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         {account.type.toLowerCase().replace("_", " ")}
                       </p>
                     </div>
@@ -226,7 +226,7 @@ export default function AccountsPage() {
                         </button>
                         <button
                           onClick={() => setConfirmDelete(null)}
-                          className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200"
+                          className="rounded-lg bg-gray-100 dark:bg-gray-700 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                         >
                           Cancel
                         </button>
@@ -234,7 +234,7 @@ export default function AccountsPage() {
                     ) : (
                       <button
                         onClick={() => setConfirmDelete(account.id)}
-                        className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                        className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400"
                         title="Remove account"
                       >
                         <TrashIcon />

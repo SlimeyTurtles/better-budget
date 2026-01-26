@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useSidebar } from "@/context/SidebarContext";
+import { useTheme } from "@/context/ThemeContext";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
@@ -15,15 +17,34 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { isCollapsed, toggleSidebar } = useSidebar();
+  const { theme, toggleTheme } = useTheme();
 
   return (
-    <div className="flex h-full w-64 flex-col bg-gray-900">
-      <div className="flex h-16 items-center px-6">
-        <Link href="/dashboard" className="text-xl font-bold text-white">
-          Better Budget
-        </Link>
+    <div
+      className={cn(
+        "flex h-full flex-col bg-gray-900 dark:bg-gray-950 transition-all duration-300",
+        isCollapsed ? "w-16" : "w-64"
+      )}
+    >
+      <div className="flex h-16 items-center justify-between px-4">
+        {!isCollapsed && (
+          <Link href="/dashboard" className="text-xl font-bold text-white">
+            Better Budget
+          </Link>
+        )}
+        <button
+          onClick={toggleSidebar}
+          className={cn(
+            "rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white transition-colors",
+            isCollapsed && "mx-auto"
+          )}
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <ChevronIcon className="h-5 w-5" direction={isCollapsed ? "right" : "left"} />
+        </button>
       </div>
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-1 px-2 py-4">
         {navigation.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
@@ -34,20 +55,68 @@ export function Sidebar() {
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive
                   ? "bg-gray-800 text-white"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                  : "text-gray-400 hover:bg-gray-800 hover:text-white",
+                isCollapsed && "justify-center px-2"
               )}
+              title={isCollapsed ? item.name : undefined}
             >
-              <item.icon className="h-5 w-5" />
-              {item.name}
+              <item.icon className="h-5 w-5 flex-shrink-0" />
+              {!isCollapsed && item.name}
             </Link>
           );
         })}
       </nav>
+      {/* Theme toggle at bottom */}
+      <div className="border-t border-gray-800 p-2">
+        <button
+          onClick={toggleTheme}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors",
+            isCollapsed && "justify-center px-2"
+          )}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {theme === "dark" ? (
+            <SunIcon className="h-5 w-5 flex-shrink-0" />
+          ) : (
+            <MoonIcon className="h-5 w-5 flex-shrink-0" />
+          )}
+          {!isCollapsed && (theme === "dark" ? "Light Mode" : "Dark Mode")}
+        </button>
+      </div>
     </div>
   );
 }
 
-// Simple icon components
+// Icon components
+function ChevronIcon({ className, direction }: { className?: string; direction: "left" | "right" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      {direction === "left" ? (
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+      ) : (
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+      )}
+    </svg>
+  );
+}
+
+function SunIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+  );
+}
+
+function MoonIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+    </svg>
+  );
+}
+
 function HomeIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -97,4 +166,3 @@ function SettingsIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-

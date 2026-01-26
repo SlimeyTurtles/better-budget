@@ -78,40 +78,40 @@ export default function BudgetPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Budget</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Budget</h1>
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
           Track your spending against your budget
         </p>
       </div>
 
       {/* Budget Overview */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg bg-white p-6 shadow">
-          <p className="text-sm font-medium text-gray-600">Monthly Income</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Monthly Income</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
             {formatCurrency(monthlyIncome)}
           </p>
         </div>
-        <div className="rounded-lg bg-white p-6 shadow">
-          <p className="text-sm font-medium text-gray-600">Available Budget</p>
-          <p className="mt-2 text-2xl font-bold text-blue-600">
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Available Budget</p>
+          <p className="mt-2 text-2xl font-bold text-blue-600 dark:text-blue-400">
             {formatCurrency(availableBudget)}
           </p>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             After rent ({formatCurrency(rentAmount)}) + savings ({formatCurrency(savingsGoal)})
           </p>
         </div>
-        <div className="rounded-lg bg-white p-6 shadow">
-          <p className="text-sm font-medium text-gray-600">Spent This Month</p>
-          <p className="mt-2 text-2xl font-bold text-red-600">
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Spent This Month</p>
+          <p className="mt-2 text-2xl font-bold text-red-600 dark:text-red-400">
             {formatCurrency(totalSpent)}
           </p>
         </div>
-        <div className="rounded-lg bg-white p-6 shadow">
-          <p className="text-sm font-medium text-gray-600">Remaining</p>
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Remaining</p>
           <p
             className={`mt-2 text-2xl font-bold ${
-              remaining >= 0 ? "text-green-600" : "text-red-600"
+              remaining >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
             }`}
           >
             {formatCurrency(remaining)}
@@ -144,9 +144,9 @@ export default function BudgetPage() {
       )}
 
       {/* Spending Chart */}
-      <div className="rounded-lg bg-white p-6 shadow">
+      <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Spending Over Time</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Spending Over Time</h2>
           <div className="flex gap-2">
             {(["daily", "weekly", "monthly"] as const).map((p) => (
               <button
@@ -155,7 +155,7 @@ export default function BudgetPage() {
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
                   period === p
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                 }`}
               >
                 {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -168,8 +168,8 @@ export default function BudgetPage() {
 
       {/* Category Breakdown */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-lg bg-white p-6 shadow">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
             Spending by Category
           </h2>
           <CategoryBreakdownChart
@@ -177,23 +177,23 @@ export default function BudgetPage() {
             height={300}
           />
         </div>
-        <div className="rounded-lg bg-white p-6 shadow">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
             Top Categories
           </h2>
           {spending?.categoryBreakdown && spending.categoryBreakdown.length > 0 ? (
             <div className="space-y-3">
-              {spending.categoryBreakdown.slice(0, 8).map((cat, index) => (
+              {spending.categoryBreakdown.slice(0, 8).map((cat) => (
                 <div key={cat.category}>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
                       {cat.category}
                     </span>
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
                       {formatCurrency(cat.amount)} ({cat.percentage.toFixed(1)}%)
                     </span>
                   </div>
-                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-200">
+                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                     <div
                       className="h-full rounded-full bg-blue-500"
                       style={{ width: `${cat.percentage}%` }}
@@ -203,7 +203,7 @@ export default function BudgetPage() {
               ))}
             </div>
           ) : (
-            <p className="text-gray-500">No spending data available</p>
+            <p className="text-gray-500 dark:text-gray-400">No spending data available</p>
           )}
         </div>
       </div>
