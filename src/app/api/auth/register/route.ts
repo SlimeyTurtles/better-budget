@@ -2,15 +2,42 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+
+// Password must be 12+ chars with at least one uppercase, lowercase, number, and special char
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{12,}$/;
 
 const registerSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  name: z.string().min(1, "Name is required").optional(),
+  email: z.string().email("Invalid email address").max(255),
+  password: z
+    .string()
+    .min(12, "Password must be at least 12 characters")
+    .max(128, "Password is too long")
+    .regex(
+      passwordRegex,
+      "Password must include uppercase, lowercase, number, and special character"
+    ),
+  name: z.string().min(1, "Name is required").max(100).optional(),
 });
 
 export async function POST(request: Request) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit(`register:${clientIP}`, RATE_LIMITS.register);
+
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: "Too many registration attempts. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil(rateLimit.resetIn / 1000)),
+          },
+        }
+      );
+    }
+
     const body = await request.json();
     const { email, password, name } = registerSchema.parse(body);
 

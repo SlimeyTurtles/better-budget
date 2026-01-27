@@ -3,12 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 const createTransactionSchema = z.object({
-  amount: z.number().positive("Amount must be positive"),
-  name: z.string().min(1, "Name is required"),
+  amount: z.number().positive("Amount must be positive").max(999999999, "Amount too large"),
+  name: z.string().min(1, "Name is required").max(255).trim(),
   date: z.string().transform((str) => new Date(str)),
-  category: z.string().optional(),
+  category: z.string().max(100).optional(),
   isIncome: z.boolean(),
   bankAccountId: z.string().optional(),
 });
@@ -85,6 +86,15 @@ export async function POST(request: Request) {
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limiting per user
+    const rateLimit = checkRateLimit(`transactions:${session.user.id}`, RATE_LIMITS.api);
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: "Too many requests. Please slow down." },
+        { status: 429 }
+      );
     }
 
     const body = await request.json();

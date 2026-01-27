@@ -1,36 +1,154 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Better Budget
 
-## Getting Started
+A personal finance and budgeting app built with Next.js, designed for people living paycheck-to-paycheck who want to break that cycle.
 
-First, run the development server:
+## Tech Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Framework**: Next.js 15 (App Router, Turbopack)
+- **Database**: PostgreSQL with Prisma ORM
+- **Auth**: NextAuth.js with credentials provider
+- **Banking**: Plaid API for account linking and transaction sync
+- **Charts**: Recharts
+- **Styling**: Tailwind CSS
+
+## Prerequisites
+
+- Node.js 20+
+- Docker and Docker Compose
+- Plaid API credentials (for bank account linking)
+
+## Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+# Database (for local development without Docker)
+DATABASE_URL="postgresql://postgres:postgres@localhost:5433/better_budget"
+
+# NextAuth
+NEXTAUTH_URL="http://localhost:3001"
+NEXTAUTH_SECRET="your-secret-key-here"
+
+# Plaid API
+PLAID_CLIENT_ID="your-plaid-client-id"
+PLAID_SECRET="your-plaid-secret"
+PLAID_ENV="sandbox"
+
+# Encryption (for storing Plaid tokens)
+ENCRYPTION_KEY="your-32-character-encryption-key"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Running with Docker (Recommended)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The easiest way to run the entire stack:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Start both the app and database
+docker compose up -d
 
-## Learn More
+# View logs
+docker compose logs -f
 
-To learn more about Next.js, take a look at the following resources:
+# Stop containers
+docker compose down
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The app will be available at **http://localhost:3001**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Docker Services
 
-## Deploy on Vercel
+| Service | Port | Description |
+|---------|------|-------------|
+| app | 3001 | Next.js application |
+| db | 5433 | PostgreSQL database |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Rebuilding
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+If you make changes to the code:
+
+```bash
+docker compose build app
+docker compose up -d
+```
+
+For a clean rebuild:
+
+```bash
+docker compose build app --no-cache
+docker compose up -d
+```
+
+## Local Development (without Docker)
+
+If you prefer running locally:
+
+1. **Start the database** (still uses Docker):
+   ```bash
+   docker compose up db -d
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Run database migrations**:
+   ```bash
+   npx prisma migrate dev
+   ```
+
+4. **Start the development server**:
+   ```bash
+   npm run dev
+   ```
+
+The app will be available at **http://localhost:3000**
+
+## Database
+
+### Migrations
+
+```bash
+# Create a new migration
+npx prisma migrate dev --name your_migration_name
+
+# Apply migrations (production)
+npx prisma migrate deploy
+
+# Reset database (WARNING: deletes all data)
+npx prisma migrate reset
+```
+
+### Prisma Studio
+
+View and edit data in the browser:
+
+```bash
+npx prisma studio
+```
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── (auth)/           # Login, register pages
+│   ├── (dashboard)/      # Protected pages
+│   └── api/              # API routes
+├── components/
+│   ├── charts/           # Recharts visualizations
+│   ├── goals/            # Savings goal components
+│   ├── layout/           # Sidebar, Header
+│   └── transactions/     # Transaction modals
+├── lib/                  # Auth, Prisma, utilities
+└── types/                # TypeScript definitions
+```
+
+## Features
+
+- Bank account linking via Plaid
+- Transaction tracking (automatic + manual)
+- Budget projections and visualizations
+- Emergency fund tracker
+- Income configuration
+- Dark mode support

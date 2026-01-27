@@ -1,4 +1,5 @@
 import { Configuration, PlaidApi, PlaidEnvironments, Products, CountryCode } from "plaid";
+import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 
 const configuration = new Configuration({
   basePath: PlaidEnvironments[process.env.PLAID_ENV as keyof typeof PlaidEnvironments] || PlaidEnvironments.sandbox,
@@ -15,24 +16,48 @@ export const plaidClient = new PlaidApi(configuration);
 export const PLAID_PRODUCTS: Products[] = [Products.Transactions];
 export const PLAID_COUNTRY_CODES: CountryCode[] = [CountryCode.Us];
 
-// Encrypt access token before storing in database
+// Encrypt access token using AES-256-GCM before storing in database
 export function encryptAccessToken(token: string): string {
-  // In production, use proper encryption (e.g., AES-256-GCM)
-  // This is a simple base64 encoding for development
-  const key = process.env.ENCRYPTION_KEY || "";
-  const combined = `${key}:${token}`;
-  return Buffer.from(combined).toString("base64");
+  const key = process.env.ENCRYPTION_KEY;
+  if (!key || key.length !== 64) {
+    throw new Error("ENCRYPTION_KEY must be a 64-character hex string (32 bytes)");
+  }
+
+  const keyBuffer = Buffer.from(key, "hex");
+  const iv = randomBytes(16);
+  const cipher = createCipheriv("aes-256-gcm", keyBuffer, iv);
+
+  let encrypted = cipher.update(token, "utf8", "hex");
+  encrypted += cipher.final("hex");
+  const authTag = cipher.getAuthTag();
+
+  // Format: iv:authTag:encryptedData (all hex)
+  return `${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted}`;
 }
 
-// Decrypt access token from database
+// Decrypt access token from database using AES-256-GCM
 export function decryptAccessToken(encrypted: string): string {
-  const key = process.env.ENCRYPTION_KEY || "";
-  const decoded = Buffer.from(encrypted, "base64").toString("utf8");
-  const [storedKey, token] = decoded.split(":");
-  if (storedKey !== key) {
-    throw new Error("Invalid encryption key");
+  const key = process.env.ENCRYPTION_KEY;
+  if (!key || key.length !== 64) {
+    throw new Error("ENCRYPTION_KEY must be a 64-character hex string (32 bytes)");
   }
-  return token;
+
+  const [ivHex, authTagHex, encryptedData] = encrypted.split(":");
+  if (!ivHex || !authTagHex || !encryptedData) {
+    throw new Error("Invalid encrypted token format");
+  }
+
+  const keyBuffer = Buffer.from(key, "hex");
+  const iv = Buffer.from(ivHex, "hex");
+  const authTag = Buffer.from(authTagHex, "hex");
+
+  const decipher = createDecipheriv("aes-256-gcm", keyBuffer, iv);
+  decipher.setAuthTag(authTag);
+
+  let decrypted = decipher.update(encryptedData, "hex", "utf8");
+  decrypted += decipher.final("utf8");
+
+  return decrypted;
 }
 
 // Map Plaid account types to our enum
