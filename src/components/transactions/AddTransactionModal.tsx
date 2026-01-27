@@ -39,10 +39,16 @@ export function AddTransactionModal({
   const [error, setError] = useState("");
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
 
+  // Get local date in YYYY-MM-DD format (avoid UTC timezone shift)
+  const getLocalDateString = () => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  };
+
   const [formData, setFormData] = useState({
     name: "",
     amount: "",
-    date: new Date().toISOString().split("T")[0],
+    date: getLocalDateString(),
     category: "",
     isIncome: false,
     bankAccountId: "",
@@ -94,7 +100,7 @@ export function AddTransactionModal({
       setFormData({
         name: "",
         amount: "",
-        date: new Date().toISOString().split("T")[0],
+        date: getLocalDateString(),
         category: "",
         isIncome: false,
         bankAccountId: "",
