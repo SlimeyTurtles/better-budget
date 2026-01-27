@@ -32,6 +32,9 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Ensure public directory exists (Next.js optional)
+RUN mkdir -p public
+
 # Build the application
 RUN npm run build
 
