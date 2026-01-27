@@ -64,14 +64,14 @@ export function IncomeComparisonChart({
           axisLine={{ stroke: "#e5e7eb" }}
         />
         <Tooltip
-          formatter={(value: number, name: string) => {
+          formatter={(value, name) => {
             const labels: Record<string, string> = {
               amortizedIncome: "Projected (Amortized)",
               actualIncome: "Actual Income",
               cumulativeAmortized: "Cumulative Projected",
               cumulativeActual: "Cumulative Actual",
             };
-            return [formatCurrency(value), labels[name] || name];
+            return [formatCurrency(Number(value) || 0), labels[name as string] || name];
           }}
           labelFormatter={(label) => formatDateShort(label)}
           contentStyle={{

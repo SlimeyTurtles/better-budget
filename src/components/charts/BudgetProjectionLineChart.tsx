@@ -10,7 +10,6 @@ import {
   ResponsiveContainer,
   ReferenceLine,
   Legend,
-  Area,
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 
@@ -28,7 +27,7 @@ interface BudgetProjectionLineChartProps {
     actual: number | null;
   }[];
   currentUnit: number;
-  totalUnits: number;
+  totalUnits?: number;
   rentUtilities: number;
   savingsTarget: number;
   incomePerUnit: number;
@@ -38,7 +37,6 @@ interface BudgetProjectionLineChartProps {
 export function BudgetProjectionLineChart({
   trendlineData,
   currentUnit,
-  totalUnits,
   rentUtilities,
   savingsTarget,
   incomePerUnit,
@@ -112,13 +110,13 @@ export function BudgetProjectionLineChart({
           axisLine={{ stroke: "#e5e7eb" }}
         />
         <Tooltip
-          formatter={(value: number | null, name: string) => {
+          formatter={(value, name) => {
             if (value === null || value === undefined) return ["-", name];
             const labels: Record<string, string> = {
               actual: "Actual Balance",
               projected: "Projected (No Spending)",
             };
-            return [formatCurrency(value), labels[name] || name];
+            return [formatCurrency(Number(value)), labels[name as string] || name];
           }}
           contentStyle={{
             backgroundColor: "white",

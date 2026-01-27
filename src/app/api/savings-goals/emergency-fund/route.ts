@@ -15,7 +15,7 @@ export async function GET() {
     }
 
     // Get the emergency fund goal
-    let emergencyFund = await prisma.savingsGoal.findFirst({
+    const emergencyFund = await prisma.savingsGoal.findFirst({
       where: {
         userId: session.user.id,
         name: EMERGENCY_FUND_NAME,

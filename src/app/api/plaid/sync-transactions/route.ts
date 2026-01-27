@@ -80,7 +80,7 @@ export async function POST(request: Request) {
                     region: transaction.location.region,
                     country: transaction.location.country,
                   }
-                : null,
+                : undefined,
             },
             update: {
               amount: transaction.amount,

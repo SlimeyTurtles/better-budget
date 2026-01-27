@@ -76,12 +76,12 @@ export function NetWorthProjectionChart({
           axisLine={{ stroke: "#e5e7eb" }}
         />
         <Tooltip
-          formatter={(value: number, name: string) => {
+          formatter={(value, name) => {
             const labels: Record<string, string> = {
               actual: "Actual Balance",
               projected: "Projected Balance",
             };
-            return [formatCurrency(value), labels[name] || name];
+            return [formatCurrency(Number(value) || 0), labels[name as string] || name];
           }}
           labelFormatter={(label) => formatDateShort(label)}
           contentStyle={{

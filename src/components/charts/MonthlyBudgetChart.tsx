@@ -117,8 +117,7 @@ export function MonthlyBudgetChart({
           axisLine={{ stroke: "#e5e7eb" }}
         />
         <Tooltip
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          formatter={(value: any, name: string) => {
+          formatter={(value, name) => {
             if (value === null || value === undefined) return ["-", name];
             const labels: Record<string, string> = {
               income: "Income Goal",
@@ -127,7 +126,7 @@ export function MonthlyBudgetChart({
               actual: "Actual Balance",
               projected: "Projected (No Spending)",
             };
-            return [formatCurrency(Number(value)), labels[name] || name];
+            return [formatCurrency(Number(value)), labels[name as string] || name];
           }}
           labelFormatter={(label) => `${getXAxisLabel()}: ${label}`}
           contentStyle={{

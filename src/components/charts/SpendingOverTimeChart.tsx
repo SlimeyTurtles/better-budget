@@ -58,7 +58,7 @@ export function SpendingOverTimeChart({
           axisLine={{ stroke: "#e5e7eb" }}
         />
         <Tooltip
-          formatter={(value: number) => [formatCurrency(value), "Spending"]}
+          formatter={(value) => [formatCurrency(Number(value) || 0), "Spending"]}
           labelFormatter={(label) => formatDateShort(label)}
           contentStyle={{
             backgroundColor: "white",

@@ -76,13 +76,13 @@ export function BudgetProjectionChart({
           axisLine={{ stroke: "#e5e7eb" }}
         />
         <Tooltip
-          formatter={(value: number, name: string) => {
+          formatter={(value, name) => {
             const labels: Record<string, string> = {
               projectedBalance: "Projected Balance",
               availableToSpend: "Available to Spend",
               targetLine: "Target (Rent + Savings)",
             };
-            return [formatCurrency(value), labels[name] || name];
+            return [formatCurrency(Number(value) || 0), labels[name as string] || name];
           }}
           labelFormatter={(label) => formatDateShort(label)}
           contentStyle={{

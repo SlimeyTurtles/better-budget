@@ -60,8 +60,8 @@ export function CategoryBreakdownChart({
           paddingAngle={2}
           dataKey="amount"
           nameKey="category"
-          label={({ category, percentage }) =>
-            percentage > 5 ? `${category} (${percentage.toFixed(0)}%)` : ""
+          label={({ name, percent }) =>
+            (percent ?? 0) > 0.05 ? `${name} (${((percent ?? 0) * 100).toFixed(0)}%)` : ""
           }
           labelLine={false}
         >
@@ -70,8 +70,8 @@ export function CategoryBreakdownChart({
           ))}
         </Pie>
         <Tooltip
-          formatter={(value: number, name: string) => [
-            formatCurrency(value),
+          formatter={(value, name) => [
+            formatCurrency(Number(value) || 0),
             name,
           ]}
           contentStyle={{
@@ -83,7 +83,7 @@ export function CategoryBreakdownChart({
         <Legend
           verticalAlign="bottom"
           height={36}
-          formatter={(value, entry) => {
+          formatter={(value) => {
             const item = chartData.find((d) => d.category === value);
             if (item) {
               return `${value} (${item.percentage.toFixed(1)}%)`;

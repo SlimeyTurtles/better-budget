@@ -109,7 +109,7 @@ export async function PUT(request: Request) {
     console.error("Error updating income config:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: error.errors[0].message },
+        { error: error.issues[0].message },
         { status: 400 }
       );
     }
