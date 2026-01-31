@@ -17,32 +17,37 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { isCollapsed, toggleSidebar } = useSidebar();
+  const { isCollapsed, isMobileOpen, toggleSidebar, closeMobile } = useSidebar();
   const { theme, toggleTheme } = useTheme();
 
-  return (
-    <div
-      className={cn(
-        "flex h-full flex-col bg-gray-900 dark:bg-gray-950 transition-all duration-300",
-        isCollapsed ? "w-16" : "w-64"
-      )}
-    >
+  const sidebarContent = (isMobile: boolean) => (
+    <>
       <div className="flex h-16 items-center justify-between px-4">
-        {!isCollapsed && (
+        {(isMobile || !isCollapsed) && (
           <Link href="/dashboard" className="text-xl font-bold text-white">
             Better Budget
           </Link>
         )}
-        <button
-          onClick={toggleSidebar}
-          className={cn(
-            "rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white transition-colors",
-            isCollapsed && "mx-auto"
-          )}
-          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          <ChevronIcon className="h-5 w-5" direction={isCollapsed ? "right" : "left"} />
-        </button>
+        {isMobile ? (
+          <button
+            onClick={closeMobile}
+            className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+            aria-label="Close menu"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        ) : (
+          <button
+            onClick={toggleSidebar}
+            className={cn(
+              "rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white transition-colors",
+              isCollapsed && "mx-auto"
+            )}
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <ChevronIcon className="h-5 w-5" direction={isCollapsed ? "right" : "left"} />
+          </button>
+        )}
       </div>
       <nav className="flex-1 space-y-1 px-2 py-4">
         {navigation.map((item) => {
@@ -56,12 +61,12 @@ export function Sidebar() {
                 isActive
                   ? "bg-gray-800 text-white"
                   : "text-gray-400 hover:bg-gray-800 hover:text-white",
-                isCollapsed && "justify-center px-2"
+                !isMobile && isCollapsed && "justify-center px-2"
               )}
-              title={isCollapsed ? item.name : undefined}
+              title={!isMobile && isCollapsed ? item.name : undefined}
             >
               <item.icon className="h-5 w-5 flex-shrink-0" />
-              {!isCollapsed && item.name}
+              {(isMobile || !isCollapsed) && item.name}
             </Link>
           );
         })}
@@ -72,7 +77,7 @@ export function Sidebar() {
           onClick={toggleTheme}
           className={cn(
             "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors",
-            isCollapsed && "justify-center px-2"
+            !isMobile && isCollapsed && "justify-center px-2"
           )}
           title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         >
@@ -81,10 +86,48 @@ export function Sidebar() {
           ) : (
             <MoonIcon className="h-5 w-5 flex-shrink-0" />
           )}
-          {!isCollapsed && (theme === "dark" ? "Light Mode" : "Dark Mode")}
+          {(isMobile || !isCollapsed) && (theme === "dark" ? "Light Mode" : "Dark Mode")}
         </button>
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar - hidden on mobile */}
+      <div
+        className={cn(
+          "hidden md:flex h-full flex-col bg-gray-900 dark:bg-gray-950 transition-all duration-300",
+          isCollapsed ? "w-16" : "w-64"
+        )}
+      >
+        {sidebarContent(false)}
+      </div>
+
+      {/* Mobile drawer overlay */}
+      {isMobileOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40 bg-black/50 md:hidden"
+            onClick={closeMobile}
+            aria-hidden="true"
+          />
+          {/* Drawer */}
+          <div className="fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-gray-900 dark:bg-gray-950 md:hidden animate-slide-in">
+            {sidebarContent(true)}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
   );
 }
 

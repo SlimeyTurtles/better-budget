@@ -81,16 +81,16 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             View and manage your transaction history
           </p>
         </div>
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 w-full sm:w-auto"
         >
           <svg
             className="h-5 w-5"
@@ -180,11 +180,11 @@ export default function TransactionsPage() {
         <div className="rounded-lg bg-white dark:bg-gray-800 shadow">
           <ul className="divide-y divide-gray-200 dark:divide-gray-700">
             {filteredTransactions.map((transaction) => (
-              <li key={transaction.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+              <li key={transaction.id} className="p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <div className="flex items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
                     <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
                         transaction.isIncome || Number(transaction.amount) < 0
                           ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400"
                           : "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
@@ -196,8 +196,8 @@ export default function TransactionsPage() {
                         <ArrowUpIcon />
                       )}
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-900 dark:text-white truncate">
                         {transaction.merchantName || transaction.name}
                         {transaction.isPending && (
                           <span className="ml-2 rounded bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 text-xs text-yellow-800 dark:text-yellow-400">
@@ -205,15 +205,15 @@ export default function TransactionsPage() {
                           </span>
                         )}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
                         {formatDate(transaction.date)} • {transaction.bankAccount.name}
                         {transaction.category && ` • ${transaction.category}`}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                     <p
-                      className={`text-lg font-semibold ${
+                      className={`text-base sm:text-lg font-semibold whitespace-nowrap ${
                         transaction.isIncome || Number(transaction.amount) < 0
                           ? "text-green-600 dark:text-green-400"
                           : "text-red-600 dark:text-red-400"

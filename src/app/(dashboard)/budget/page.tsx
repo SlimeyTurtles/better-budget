@@ -144,15 +144,15 @@ export default function BudgetPage() {
       )}
 
       {/* Spending Chart */}
-      <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Spending Over Time</h2>
-          <div className="flex gap-2">
+          <div className="flex gap-1 sm:gap-2">
             {(["daily", "weekly", "monthly"] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                className={`rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium flex-1 sm:flex-none ${
                   period === p
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"

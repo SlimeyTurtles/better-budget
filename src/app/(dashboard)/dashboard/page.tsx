@@ -182,7 +182,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Budget Trendlines Chart */}
-        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
           <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
