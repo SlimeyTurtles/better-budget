@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { randomUUID } from "crypto";
 
 // Password must be 12+ chars with at least one uppercase, lowercase, number, and special char
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{12,}$/;
@@ -59,9 +60,11 @@ export async function POST(request: Request) {
     // Create user
     const user = await prisma.user.create({
       data: {
+        id: randomUUID(),
         email,
         password: hashedPassword,
         name,
+        updatedAt: new Date(),
       },
     });
 

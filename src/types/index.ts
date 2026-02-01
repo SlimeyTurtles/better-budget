@@ -93,3 +93,6 @@ export function decimalToNumber(decimal: Decimal | null | undefined): number {
   if (decimal === null || decimal === undefined) return 0;
   return Number(decimal);
 }
+
+// Dashboard card types
+export * from "./dashboard";

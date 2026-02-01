@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { MonthlyBudgetChart } from "@/components/charts/MonthlyBudgetChart";
 import { BudgetProjectionLineChart } from "@/components/charts/BudgetProjectionLineChart";
-import { EmergencyFundCard } from "@/components/goals/EmergencyFundCard";
-import { formatCurrency } from "@/lib/utils";
+import { DraggableCardGrid, AddCardPopup } from "@/components/dashboard";
+import {
+  DashboardCardConfig,
+  DEFAULT_DASHBOARD_CARDS,
+  CardType,
+  CardData,
+} from "@/types/dashboard";
 
 interface Account {
   id: string;
@@ -23,6 +28,24 @@ interface TrendlineDataPoint {
   rent: number;
   savings: number;
   actual: number | null;
+}
+
+interface BudgetGoal {
+  id: string;
+  category: string;
+  monthlyLimit: number;
+  currentSpending?: number;
+  remaining?: number;
+  percentUsed?: number;
+}
+
+interface SavingsGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  progressPercent?: number;
+  daysUntilGoal?: number | null;
 }
 
 type TimePeriod = "daily" | "weekly" | "biweekly" | "monthly";
@@ -55,18 +78,40 @@ export default function DashboardPage() {
     dailySavingsRate: 0,
   });
 
-  useEffect(() => {
-    fetchData();
-  }, [period]);
+  // Dashboard configuration state
+  const [dashboardCards, setDashboardCards] = useState<DashboardCardConfig[]>(DEFAULT_DASHBOARD_CARDS);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [budgetGoals, setBudgetGoals] = useState<BudgetGoal[]>([]);
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [budgetSummary, setBudgetSummary] = useState<{
+    totalLimit: number;
+    totalSpending: number;
+    totalRemaining: number;
+    totalPercentUsed: number;
+  } | null>(null);
 
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     try {
-      const [accountsRes, configRes, budgetRes, spendingRes, emergencyFundRes] = await Promise.all([
+      const [
+        accountsRes,
+        configRes,
+        budgetRes,
+        spendingRes,
+        emergencyFundRes,
+        dashboardConfigRes,
+        budgetGoalsRes,
+        savingsGoalsRes,
+        budgetSummaryRes,
+      ] = await Promise.all([
         fetch("/api/accounts"),
         fetch("/api/income-config"),
         fetch(`/api/analytics/monthly-budget?period=${period}`),
         fetch("/api/analytics/spending?period=monthly"),
         fetch("/api/savings-goals/emergency-fund"),
+        fetch("/api/dashboard-config"),
+        fetch("/api/budget-goals"),
+        fetch("/api/savings-goals"),
+        fetch("/api/analytics/budget-summary"),
       ]);
 
       const accountsData = await accountsRes.json();
@@ -74,6 +119,10 @@ export default function DashboardPage() {
       const budgetData = await budgetRes.json();
       const spendingData = await spendingRes.json();
       const emergencyFundData = await emergencyFundRes.json();
+      const dashboardConfigData = await dashboardConfigRes.json();
+      const budgetGoalsData = await budgetGoalsRes.json();
+      const savingsGoalsData = await savingsGoalsRes.json();
+      const budgetSummaryData = await budgetSummaryRes.json();
 
       setAccounts(accountsData.accounts || []);
 
@@ -104,16 +153,48 @@ export default function DashboardPage() {
         daysUntilGoal: emergencyFundData.daysUntilGoal,
         dailySavingsRate: emergencyFundData.dailySavingsRate || 0,
       });
+
+      // Set dashboard configuration
+      setDashboardCards(dashboardConfigData.cards || DEFAULT_DASHBOARD_CARDS);
+
+      // Set budget goals with spending data
+      const goalsWithSpending = (budgetGoalsData.goals || []).map((goal: BudgetGoal) => {
+        const summaryGoal = budgetSummaryData.goals?.find((g: BudgetGoal) => g.id === goal.id);
+        return {
+          ...goal,
+          currentSpending: summaryGoal?.currentSpending || 0,
+          remaining: summaryGoal?.remaining || goal.monthlyLimit,
+          percentUsed: summaryGoal?.percentUsed || 0,
+        };
+      });
+      setBudgetGoals(goalsWithSpending);
+
+      // Set savings goals
+      setSavingsGoals(savingsGoalsData.goals || []);
+
+      // Set budget summary totals
+      if (budgetSummaryData.summary) {
+        setBudgetSummary({
+          totalLimit: budgetSummaryData.summary.totalLimit,
+          totalSpending: budgetSummaryData.summary.totalSpending,
+          totalRemaining: budgetSummaryData.summary.totalRemaining,
+          totalPercentUsed: budgetSummaryData.summary.totalPercentUsed,
+        });
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [period]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   function handleOnboardingComplete() {
     setShowOnboarding(false);
-    fetchData(); // Refresh data after onboarding
+    fetchData();
   }
 
   // Calculate totals from accounts
@@ -130,6 +211,108 @@ export default function DashboardPage() {
     { assets: 0, liabilities: 0 }
   );
 
+  // Build card data map for all card types
+  const cardDataMap: Partial<Record<string, CardData["data"]>> = {
+    TOTAL_BALANCE: {
+      assets: totals.assets,
+      liabilities: totals.liabilities,
+      netBalance: totals.assets - totals.liabilities,
+    },
+    MONTHLY_SPENDING: { totalSpending: stats.monthlySpending },
+    AVAILABLE_TODAY: {
+      availableToday: stats.availableToday,
+      availablePerDay: stats.availablePerDay,
+      availableToSpendTotal: stats.availableToSpendTotal,
+      todaySpending: stats.todaySpending,
+    },
+    TOTAL_EXPENSES: { totalExpenses: stats.monthlySpending },
+    EMERGENCY_FUND: {
+      targetAmount: emergencyFund.targetAmount,
+      currentAmount: emergencyFund.currentAmount,
+      progressPercent: emergencyFund.progressPercent,
+      daysUntilGoal: emergencyFund.daysUntilGoal,
+      dailySavingsRate: emergencyFund.dailySavingsRate,
+    },
+    BUDGET_TOTAL_REMAINING: budgetSummary
+      ? {
+          totalLimit: budgetSummary.totalLimit,
+          totalSpending: budgetSummary.totalSpending,
+          totalRemaining: budgetSummary.totalRemaining,
+          percentUsed: budgetSummary.totalPercentUsed,
+        }
+      : { totalLimit: 0, totalSpending: 0, totalRemaining: 0, percentUsed: 0 },
+  };
+
+  // Add budget goal data
+  budgetGoals.forEach((goal) => {
+    cardDataMap[`budget-${goal.id}`] = {
+      category: goal.category,
+      monthlyLimit: goal.monthlyLimit,
+      currentSpending: goal.currentSpending || 0,
+      remaining: goal.remaining || goal.monthlyLimit,
+      percentUsed: goal.percentUsed || 0,
+    };
+  });
+
+  // Add savings goal data
+  savingsGoals.forEach((goal) => {
+    cardDataMap[`savings-${goal.id}`] = {
+      name: goal.name,
+      targetAmount: goal.targetAmount,
+      currentAmount: goal.currentAmount,
+      progressPercent: goal.progressPercent || 0,
+      daysUntilGoal: goal.daysUntilGoal,
+    };
+  });
+
+  // Handle card changes (reorder)
+  const handleCardsChange = async (newCards: DashboardCardConfig[]) => {
+    setDashboardCards(newCards);
+    try {
+      await fetch("/api/dashboard-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cards: newCards }),
+      });
+    } catch (error) {
+      console.error("Error saving dashboard config:", error);
+    }
+  };
+
+  // Handle card removal
+  const handleRemoveCard = async (cardId: string) => {
+    const newCards = dashboardCards
+      .filter((c) => c.id !== cardId)
+      .map((c, i) => ({ ...c, position: i }));
+    await handleCardsChange(newCards);
+  };
+
+  // Handle adding a new card
+  const handleAddCard = async (
+    type: CardType,
+    config?: { budgetGoalId?: string; savingsGoalId?: string }
+  ) => {
+    const newCard: DashboardCardConfig = {
+      id: `card-${Date.now()}`,
+      type,
+      position: dashboardCards.length,
+      config,
+    };
+    const newCards = [...dashboardCards, newCard];
+    await handleCardsChange(newCards);
+  };
+
+  // Handle emergency fund update
+  const handleEmergencyFundUpdate = (currentAmount: number, targetAmount: number) => {
+    setEmergencyFund((prev) => ({
+      ...prev,
+      currentAmount,
+      targetAmount,
+      progressPercent: targetAmount > 0 ? Math.min(100, Math.round((currentAmount / targetAmount) * 100)) : 0,
+    }));
+    fetchData();
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -143,43 +326,43 @@ export default function DashboardPage() {
       {showOnboarding && <OnboardingModal onComplete={handleOnboardingComplete} />}
 
       <div className="space-y-6">
-        {/* Quick Stats */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Total Balance"
-            value={formatCurrency(totals.assets - totals.liabilities)}
-            description="Across all accounts"
-            color="blue"
-          />
-          <StatCard
-            title="Monthly Spending"
-            value={formatCurrency(stats.monthlySpending)}
-            description="This month"
-            color="red"
-          />
-          <AvailableTodayCard
-            availableToday={stats.availableToday}
-            availablePerDay={stats.availablePerDay}
-            availableToSpendTotal={stats.availableToSpendTotal}
-            todaySpending={stats.todaySpending}
-          />
-          <EmergencyFundCard
-            targetAmount={emergencyFund.targetAmount}
-            currentAmount={emergencyFund.currentAmount}
-            progressPercent={emergencyFund.progressPercent}
-            daysUntilGoal={emergencyFund.daysUntilGoal}
-            dailySavingsRate={emergencyFund.dailySavingsRate}
-            onUpdate={(newCurrent, newTarget) => {
-              setEmergencyFund((prev) => ({
-                ...prev,
-                currentAmount: newCurrent,
-                targetAmount: newTarget,
-                progressPercent: newTarget > 0 ? Math.min(100, Math.round((newCurrent / newTarget) * 100)) : 0,
-              }));
-              fetchData(); // Refresh to get updated days until goal
-            }}
-          />
+        {/* Dashboard Header with Edit Button */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Your financial overview at a glance
+            </p>
+          </div>
+          <button
+            onClick={() => setIsEditMode(!isEditMode)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isEditMode
+                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
+            </svg>
+            {isEditMode ? "Done" : "Edit"}
+          </button>
         </div>
+
+        {/* Configurable Quick Stats Cards */}
+        <DraggableCardGrid
+          cards={dashboardCards}
+          cardDataMap={cardDataMap}
+          isEditMode={isEditMode}
+          onCardsChange={handleCardsChange}
+          onRemoveCard={handleRemoveCard}
+          onEmergencyFundUpdate={handleEmergencyFundUpdate}
+        />
 
         {/* Budget Trendlines Chart */}
         <div className="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
@@ -290,75 +473,18 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Floating Add Card Button */}
+      <AddCardPopup
+        isEditMode={isEditMode}
+        budgetGoals={budgetGoals}
+        savingsGoals={savingsGoals}
+        existingCardTypes={dashboardCards.map((card) => ({
+          type: card.type,
+          configId: card.config?.budgetGoalId || card.config?.savingsGoalId,
+        }))}
+        onAddCard={handleAddCard}
+      />
     </>
-  );
-}
-
-function StatCard({
-  title,
-  value,
-  description,
-  color,
-}: {
-  title: string;
-  value: string;
-  description: string;
-  color: "blue" | "red" | "green" | "purple";
-}) {
-  const colorClasses = {
-    blue: "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
-    red: "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400",
-    green: "bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400",
-    purple: "bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
-  };
-
-  return (
-    <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
-      <div className={`inline-flex rounded-lg p-2 ${colorClasses[color]}`}>
-        <span className="text-sm font-medium">{title}</span>
-      </div>
-      <p className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>
-    </div>
-  );
-}
-
-function AvailableTodayCard({
-  availableToday,
-  availablePerDay,
-  availableToSpendTotal,
-  todaySpending,
-}: {
-  availableToday: number;
-  availablePerDay: number;
-  availableToSpendTotal: number;
-  todaySpending: number;
-}) {
-  const isPositive = availableToday >= 0;
-  const isTotalPositive = availableToSpendTotal >= 0;
-  const colorClass = isPositive
-    ? "bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400"
-    : "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400";
-  const valueColor = isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400";
-  const totalColor = isTotalPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400";
-
-  return (
-    <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
-      <div className={`inline-flex rounded-lg p-2 ${colorClass}`}>
-        <span className="text-sm font-medium">Available Today</span>
-      </div>
-      <p className={`mt-4 text-2xl font-bold ${valueColor}`}>
-        {formatCurrency(availableToday)}
-      </p>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        {formatCurrency(availablePerDay)}/day - {formatCurrency(todaySpending)} spent
-      </p>
-      <div className="mt-3 border-t border-gray-100 dark:border-gray-700 pt-3">
-        <p className="text-xs text-gray-500 dark:text-gray-400">Available til end of month</p>
-        <p className={`text-lg font-semibold ${totalColor}`}>
-          {formatCurrency(availableToSpendTotal)}
-        </p>
-      </div>
-    </div>
   );
 }

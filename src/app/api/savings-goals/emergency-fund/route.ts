@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { randomUUID } from "crypto";
 
 const DEFAULT_EMERGENCY_FUND_TARGET = 1000;
 const EMERGENCY_FUND_NAME = "Emergency Fund";
@@ -137,12 +138,14 @@ export async function POST(request: Request) {
       // Create new
       emergencyFund = await prisma.savingsGoal.create({
         data: {
+          id: randomUUID(),
           userId: session.user.id,
           name: EMERGENCY_FUND_NAME,
           targetAmount: newTargetAmount,
           currentAmount: newCurrentAmount,
           isComplete,
           isPrimary: true,
+          updatedAt: new Date(),
         },
       });
     }

@@ -14,7 +14,7 @@ export async function GET() {
     const accounts = await prisma.bankAccount.findMany({
       where: { userId: session.user.id },
       include: {
-        plaidItem: {
+        PlaidItem: {
           select: {
             institutionName: true,
             status: true,
@@ -24,7 +24,14 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ accounts });
+    // Transform to use camelCase for client compatibility
+    const transformedAccounts = accounts.map((a) => ({
+      ...a,
+      plaidItem: a.PlaidItem,
+      PlaidItem: undefined,
+    }));
+
+    return NextResponse.json({ accounts: transformedAccounts });
   } catch (error) {
     console.error("Error fetching accounts:", error);
     return NextResponse.json(

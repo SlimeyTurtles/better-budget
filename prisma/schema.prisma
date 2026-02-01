@@ -7,54 +7,192 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============ Authentication (NextAuth.js) ============
-model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  password      String?   // For credentials auth
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // Relations
-  accounts          Account[]
-  sessions          Session[]
-  plaidItems        PlaidItem[]
-  bankAccounts      BankAccount[]
-  transactions      Transaction[]
-  incomeConfig      IncomeConfig?
-  budgetGoals       BudgetGoal[]
-  netWorthSnapshots NetWorthSnapshot[]
-  savingsGoals      SavingsGoal[]
-}
-
 model Account {
-  id                String  @id @default(cuid())
+  id                String  @id
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  User              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
 
+model BankAccount {
+  id                String        @id
+  userId            String
+  plaidItemId       String
+  plaidAccountId    String        @unique
+  name              String
+  officialName      String?
+  type              AccountType
+  subtype           String?
+  mask              String?
+  currentBalance    Decimal?      @db.Decimal(19, 4)
+  availableBalance  Decimal?      @db.Decimal(19, 4)
+  isoCurrencyCode   String?       @default("USD")
+  lastBalanceUpdate DateTime?
+  isHidden          Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime
+  PlaidItem         PlaidItem     @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+  User              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Transaction       Transaction[]
+
+  @@index([userId])
+}
+
+model BudgetGoal {
+  id           String   @id
+  userId       String
+  category     String
+  monthlyLimit Decimal  @db.Decimal(19, 4)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+}
+
+model IncomeConfig {
+  id                     String       @id
+  userId                 String       @unique
+  projectedMonthlyIncome Decimal      @db.Decimal(19, 4)
+  payFrequency           PayFrequency @default(MONTHLY)
+  nextPayDate            DateTime?
+  rentAmount             Decimal      @default(0) @db.Decimal(19, 4)
+  rentDueDay             Int          @default(1)
+  monthlySavingsGoal     Decimal      @default(0) @db.Decimal(19, 4)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime
+  onboardingComplete     Boolean      @default(false)
+  savingsIsPercent       Boolean      @default(false)
+  utilitiesAmount        Decimal      @default(0) @db.Decimal(19, 4)
+  User                   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NetWorthSnapshot {
+  id               String   @id
+  userId           String
+  date             DateTime @db.Date
+  totalAssets      Decimal  @db.Decimal(19, 4)
+  totalLiabilities Decimal  @db.Decimal(19, 4)
+  netWorth         Decimal  @db.Decimal(19, 4)
+  accountBreakdown Json?
+  createdAt        DateTime @default(now())
+  User             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model PlaidItem {
+  id               String          @id
+  userId           String
+  accessToken      String
+  itemId           String          @unique
+  institutionId    String?
+  institutionName  String?
+  consentExpiresAt DateTime?
+  lastSyncedAt     DateTime?
+  syncCursor       String?
+  status           PlaidItemStatus @default(ACTIVE)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime
+  BankAccount      BankAccount[]
+  User             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model SavingsGoal {
+  id            String    @id
+  userId        String
+  name          String
+  targetAmount  Decimal   @db.Decimal(19, 4)
+  currentAmount Decimal   @default(0) @db.Decimal(19, 4)
+  targetDate    DateTime? @db.Date
+  isComplete    Boolean   @default(false)
+  isPrimary     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime
+  User          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model DashboardConfig {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  cards     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id                 String      @id
+  userId             String
+  bankAccountId      String
+  plaidTransactionId String?     @unique
+  amount             Decimal     @db.Decimal(19, 4)
+  isoCurrencyCode    String?     @default("USD")
+  date               DateTime    @db.Date
+  authorizedDate     DateTime?   @db.Date
+  name               String
+  merchantName       String?
+  category           String?
+  categoryIconCode   String?
+  personalCategory   String?
+  isIncome           Boolean     @default(false)
+  isPending          Boolean     @default(false)
+  isManual           Boolean     @default(false)
+  paymentChannel     String?
+  location           Json?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime
+  BankAccount        BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  User               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([bankAccountId])
+  @@index([userId, date])
+}
+
+model User {
+  id               String             @id
+  email            String             @unique
+  name             String?
+  password         String?
+  emailVerified    DateTime?
+  image            String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  Account          Account[]
+  BankAccount      BankAccount[]
+  BudgetGoal       BudgetGoal[]
+  DashboardConfig  DashboardConfig?
+  IncomeConfig     IncomeConfig?
+  NetWorthSnapshot NetWorthSnapshot[]
+  PlaidItem        PlaidItem[]
+  SavingsGoal      SavingsGoal[]
+  Session          Session[]
+  Transaction      Transaction[]
 }
 
 model VerificationToken {
@@ -65,133 +203,12 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// ============ Plaid Integration ============
-model PlaidItem {
-  id               String          @id @default(cuid())
-  userId           String
-  accessToken      String          @db.Text // Encrypted Plaid access token
-  itemId           String          @unique // Plaid item ID
-  institutionId    String?
-  institutionName  String?
-  consentExpiresAt DateTime?
-  lastSyncedAt     DateTime?
-  syncCursor       String?         @db.Text // For incremental transaction sync
-  status           PlaidItemStatus @default(ACTIVE)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bankAccounts BankAccount[]
-
-  @@index([userId])
-}
-
-enum PlaidItemStatus {
-  ACTIVE
-  NEEDS_REAUTH
-  DISCONNECTED
-}
-
-// ============ Bank Accounts ============
-model BankAccount {
-  id               String      @id @default(cuid())
-  userId           String
-  plaidItemId      String
-  plaidAccountId   String      @unique // Plaid account ID
-  name             String
-  officialName     String?
-  type             AccountType
-  subtype          String?
-  mask             String? // Last 4 digits
-  currentBalance   Decimal?    @db.Decimal(19, 4)
-  availableBalance Decimal?    @db.Decimal(19, 4)
-  isoCurrencyCode  String?     @default("USD")
-  lastBalanceUpdate DateTime?
-  isHidden         Boolean     @default(false)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plaidItem    PlaidItem     @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-
-  @@index([userId])
-}
-
 enum AccountType {
-  DEPOSITORY // Checking, Savings
-  CREDIT // Credit cards
-  LOAN // Loans
-  INVESTMENT // Brokerage accounts
+  DEPOSITORY
+  CREDIT
+  LOAN
+  INVESTMENT
   OTHER
-}
-
-// ============ Transactions ============
-model Transaction {
-  id                 String   @id @default(cuid())
-  userId             String
-  bankAccountId      String
-  plaidTransactionId String?  @unique // Null for manual transactions
-
-  amount          Decimal  @db.Decimal(19, 4)
-  isoCurrencyCode String?  @default("USD")
-  date            DateTime @db.Date
-  authorizedDate  DateTime? @db.Date
-  name            String
-  merchantName    String?
-
-  // Categorization
-  category         String?
-  categoryIconCode String?
-  personalCategory String? // User override
-
-  // Transaction type
-  isIncome  Boolean @default(false)
-  isPending Boolean @default(false)
-  isManual  Boolean @default(false)
-
-  // Metadata
-  paymentChannel String? // online, in store, etc.
-  location       Json? // Store location data
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
-
-  @@index([userId, date])
-  @@index([bankAccountId])
-}
-
-// ============ Income Configuration ============
-model IncomeConfig {
-  id     String @id @default(cuid())
-  userId String @unique
-
-  // Projected monthly income (for amortized view)
-  projectedMonthlyIncome Decimal @db.Decimal(19, 4)
-
-  // Pay schedule for expected income
-  payFrequency PayFrequency @default(MONTHLY)
-  nextPayDate  DateTime?
-
-  // Monthly obligations
-  rentAmount      Decimal @db.Decimal(19, 4) @default(0)
-  rentDueDay      Int     @default(1) // Day of month
-  utilitiesAmount Decimal @db.Decimal(19, 4) @default(0)
-
-  // Savings goal
-  monthlySavingsGoal   Decimal @db.Decimal(19, 4) @default(0)
-  savingsIsPercent     Boolean @default(false) // true = percentage, false = fixed amount
-
-  // Onboarding complete
-  onboardingComplete   Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum PayFrequency {
@@ -201,60 +218,8 @@ enum PayFrequency {
   MONTHLY
 }
 
-// ============ Budget Goals ============
-model BudgetGoal {
-  id     String @id @default(cuid())
-  userId String
-
-  category     String
-  monthlyLimit Decimal @db.Decimal(19, 4)
-  isActive     Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, category])
-}
-
-// ============ Net Worth Snapshots ============
-model NetWorthSnapshot {
-  id     String @id @default(cuid())
-  userId String
-
-  date             DateTime @db.Date
-  totalAssets      Decimal  @db.Decimal(19, 4)
-  totalLiabilities Decimal  @db.Decimal(19, 4)
-  netWorth         Decimal  @db.Decimal(19, 4)
-
-  // Breakdown by account for historical reference
-  accountBreakdown Json?
-
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, date])
-  @@index([userId, date])
-}
-
-// ============ Savings Goals ============
-model SavingsGoal {
-  id     String @id @default(cuid())
-  userId String
-
-  name          String   // "Emergency Fund", "Vacation", etc.
-  targetAmount  Decimal  @db.Decimal(19, 4)
-  currentAmount Decimal  @db.Decimal(19, 4) @default(0)
-  targetDate    DateTime? @db.Date
-  isComplete    Boolean  @default(false)
-  isPrimary     Boolean  @default(false) // Primary goal shown on dashboard
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
+enum PlaidItemStatus {
+  ACTIVE
+  NEEDS_REAUTH
+  DISCONNECTED
 }

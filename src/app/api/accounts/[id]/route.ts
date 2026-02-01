@@ -23,7 +23,7 @@ export async function DELETE(
         userId: session.user.id,
       },
       include: {
-        plaidItem: true,
+        PlaidItem: true,
       },
     });
 

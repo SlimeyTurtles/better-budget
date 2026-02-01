@@ -58,7 +58,7 @@ export async function PUT(
         ...(validatedData.isIncome !== undefined && { isIncome: validatedData.isIncome }),
       },
       include: {
-        bankAccount: {
+        BankAccount: {
           select: {
             name: true,
             mask: true,
@@ -67,7 +67,14 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json({ transaction });
+    // Transform to use camelCase for client compatibility
+    const transformedTransaction = {
+      ...transaction,
+      bankAccount: transaction.BankAccount,
+      BankAccount: undefined,
+    };
+
+    return NextResponse.json({ transaction: transformedTransaction });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

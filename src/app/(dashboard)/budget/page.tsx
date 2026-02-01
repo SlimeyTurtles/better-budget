@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { SpendingOverTimeChart } from "@/components/charts/SpendingOverTimeChart";
 import { CategoryBreakdownChart } from "@/components/charts/CategoryBreakdownChart";
+import { BudgetModal, BudgetList } from "@/components/budget";
 import { formatCurrency } from "@/lib/utils";
 
 interface SpendingData {
@@ -21,34 +22,211 @@ interface IncomeConfig {
   monthlySavingsGoal: number;
 }
 
+interface BudgetGoal {
+  id: string;
+  category: string;
+  monthlyLimit: number;
+  currentSpending: number;
+  remaining: number;
+  percentUsed: number;
+  isOverBudget?: boolean;
+}
+
+interface SavingsGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  progressPercent: number;
+  daysUntilGoal?: number | null;
+  isComplete?: boolean;
+}
+
 export default function BudgetPage() {
   const [spending, setSpending] = useState<SpendingData | null>(null);
   const [incomeConfig, setIncomeConfig] = useState<IncomeConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
 
-  useEffect(() => {
-    fetchData();
-  }, [period]);
+  // Budget management state
+  const [budgetGoals, setBudgetGoals] = useState<BudgetGoal[]>([]);
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<{
+    id: string;
+    type: "spending" | "savings";
+    category?: string;
+    name?: string;
+    monthlyLimit?: number;
+    targetAmount?: number;
+    currentAmount?: number;
+  } | null>(null);
 
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     try {
-      const [spendingRes, incomeRes] = await Promise.all([
+      const [spendingRes, incomeRes, budgetGoalsRes, savingsGoalsRes, budgetSummaryRes] = await Promise.all([
         fetch(`/api/analytics/spending?period=${period}`),
         fetch("/api/income-config"),
+        fetch("/api/budget-goals"),
+        fetch("/api/savings-goals"),
+        fetch("/api/analytics/budget-summary"),
       ]);
 
       const spendingData = await spendingRes.json();
       const incomeData = await incomeRes.json();
+      const budgetGoalsData = await budgetGoalsRes.json();
+      const savingsGoalsData = await savingsGoalsRes.json();
+      const budgetSummaryData = await budgetSummaryRes.json();
 
       setSpending(spendingData);
       setIncomeConfig(incomeData.config);
+
+      // Merge budget goals with spending data
+      const goalsWithSpending = (budgetGoalsData.goals || []).map((goal: BudgetGoal) => {
+        const summaryGoal = budgetSummaryData.goals?.find((g: BudgetGoal) => g.id === goal.id);
+        return {
+          ...goal,
+          currentSpending: summaryGoal?.currentSpending || 0,
+          remaining: summaryGoal?.remaining || goal.monthlyLimit,
+          percentUsed: summaryGoal?.percentUsed || 0,
+          isOverBudget: summaryGoal?.isOverBudget || false,
+        };
+      });
+      setBudgetGoals(goalsWithSpending);
+      setSavingsGoals(savingsGoalsData.goals || []);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [period]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Handle creating/updating a budget
+  const handleSaveBudget = async (data: {
+    type: "spending" | "savings";
+    category?: string;
+    name?: string;
+    monthlyLimit?: number;
+    targetAmount?: number;
+    currentAmount?: number;
+  }) => {
+    if (editingBudget) {
+      // Update existing
+      if (data.type === "spending") {
+        const res = await fetch(`/api/budget-goals/${editingBudget.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category: data.category,
+            monthlyLimit: data.monthlyLimit,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to update budget");
+        }
+      } else {
+        const res = await fetch(`/api/savings-goals/${editingBudget.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: data.name,
+            targetAmount: data.targetAmount,
+            currentAmount: data.currentAmount,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to update savings goal");
+        }
+      }
+    } else {
+      // Create new
+      if (data.type === "spending") {
+        const res = await fetch("/api/budget-goals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category: data.category,
+            monthlyLimit: data.monthlyLimit,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to create budget");
+        }
+      } else {
+        const res = await fetch("/api/savings-goals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: data.name,
+            targetAmount: data.targetAmount,
+            currentAmount: data.currentAmount || 0,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to create savings goal");
+        }
+      }
+    }
+    setEditingBudget(null);
+    fetchData();
+  };
+
+  // Handle editing a budget
+  const handleEditBudget = (id: string) => {
+    const goal = budgetGoals.find((g) => g.id === id);
+    if (goal) {
+      setEditingBudget({
+        id,
+        type: "spending",
+        category: goal.category,
+        monthlyLimit: goal.monthlyLimit,
+      });
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleEditSavings = (id: string) => {
+    const goal = savingsGoals.find((g) => g.id === id);
+    if (goal) {
+      setEditingBudget({
+        id,
+        type: "savings",
+        name: goal.name,
+        targetAmount: goal.targetAmount,
+        currentAmount: goal.currentAmount,
+      });
+      setIsModalOpen(true);
+    }
+  };
+
+  // Handle deleting a budget
+  const handleDeleteBudget = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this budget?")) return;
+    try {
+      await fetch(`/api/budget-goals/${id}`, { method: "DELETE" });
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting budget:", error);
+    }
+  };
+
+  const handleDeleteSavings = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this savings goal?")) return;
+    try {
+      await fetch(`/api/savings-goals/${id}`, { method: "DELETE" });
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting savings goal:", error);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -143,6 +321,39 @@ export default function BudgetPage() {
         </div>
       )}
 
+      {/* Budgets Section */}
+      <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Budgets</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Set spending limits and savings goals
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setEditingBudget(null);
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Budget
+          </button>
+        </div>
+
+        <BudgetList
+          budgetGoals={budgetGoals}
+          savingsGoals={savingsGoals}
+          onEditBudget={handleEditBudget}
+          onEditSavings={handleEditSavings}
+          onDeleteBudget={handleDeleteBudget}
+          onDeleteSavings={handleDeleteSavings}
+        />
+      </div>
+
       {/* Spending Chart */}
       <div className="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -207,6 +418,17 @@ export default function BudgetPage() {
           )}
         </div>
       </div>
+
+      {/* Budget Modal */}
+      <BudgetModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingBudget(null);
+        }}
+        onSave={handleSaveBudget}
+        editingBudget={editingBudget}
+      />
     </div>
   );
 }

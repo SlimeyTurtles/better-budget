@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { plaidClient, decryptAccessToken } from "@/lib/plaid";
+import { randomUUID } from "crypto";
 
 const syncSchema = z.object({
   plaidItemId: z.string().optional(),
@@ -24,11 +25,11 @@ export async function POST(request: Request) {
     const plaidItems = plaidItemId
       ? await prisma.plaidItem.findMany({
           where: { id: plaidItemId, userId: session.user.id },
-          include: { bankAccounts: true },
+          include: { BankAccount: true },
         })
       : await prisma.plaidItem.findMany({
           where: { userId: session.user.id, status: "ACTIVE" },
-          include: { bankAccounts: true },
+          include: { BankAccount: true },
         });
 
     let totalAdded = 0;
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
 
         // Process added transactions
         for (const transaction of added) {
-          const bankAccount = item.bankAccounts.find(
+          const bankAccount = item.BankAccount.find(
             (a) => a.plaidAccountId === transaction.account_id
           );
           if (!bankAccount) continue;
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
           await prisma.transaction.upsert({
             where: { plaidTransactionId: transaction.transaction_id },
             create: {
+              id: randomUUID(),
               userId: session.user.id,
               bankAccountId: bankAccount.id,
               plaidTransactionId: transaction.transaction_id,
@@ -81,6 +83,7 @@ export async function POST(request: Request) {
                     country: transaction.location.country,
                   }
                 : undefined,
+              updatedAt: new Date(),
             },
             update: {
               amount: transaction.amount,

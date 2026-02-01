@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { randomUUID } from "crypto";
 
 const createTransactionSchema = z.object({
   amount: z.number().positive("Amount must be positive").max(999999999, "Amount too large"),
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
       prisma.transaction.findMany({
         where,
         include: {
-          bankAccount: {
+          BankAccount: {
             select: {
               name: true,
               mask: true,
@@ -70,7 +71,14 @@ export async function GET(request: Request) {
       prisma.transaction.count({ where }),
     ]);
 
-    return NextResponse.json({ transactions, total });
+    // Transform to use camelCase for client compatibility
+    const transformedTransactions = transactions.map((t) => ({
+      ...t,
+      bankAccount: t.BankAccount,
+      BankAccount: undefined,
+    }));
+
+    return NextResponse.json({ transactions: transformedTransactions, total });
   } catch (error) {
     console.error("Error fetching transactions:", error);
     return NextResponse.json(
@@ -116,16 +124,19 @@ export async function POST(request: Request) {
         },
         update: {},
         create: {
+          id: randomUUID(),
           userId: session.user.id,
           accessToken: "manual",
           itemId: `manual-item-${session.user.id}`,
           institutionName: "Manual Entry",
           status: "ACTIVE",
+          updatedAt: new Date(),
         },
       });
 
       bankAccount = await prisma.bankAccount.create({
         data: {
+          id: randomUUID(),
           userId: session.user.id,
           plaidItemId: manualPlaidItem.id,
           plaidAccountId: `manual-${session.user.id}`,
@@ -133,6 +144,7 @@ export async function POST(request: Request) {
           type: "OTHER",
           currentBalance: 0,
           availableBalance: 0,
+          updatedAt: new Date(),
         },
       });
     }
@@ -155,6 +167,7 @@ export async function POST(request: Request) {
 
     const transaction = await prisma.transaction.create({
       data: {
+        id: randomUUID(),
         userId: session.user.id,
         bankAccountId: targetAccountId,
         amount: validatedData.amount,
@@ -164,9 +177,10 @@ export async function POST(request: Request) {
         isIncome: validatedData.isIncome,
         isManual: true,
         isPending: false,
+        updatedAt: new Date(),
       },
       include: {
-        bankAccount: {
+        BankAccount: {
           select: {
             name: true,
             mask: true,
@@ -175,7 +189,14 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ transaction }, { status: 201 });
+    // Transform to use camelCase for client compatibility
+    const transformedTransaction = {
+      ...transaction,
+      bankAccount: transaction.BankAccount,
+      BankAccount: undefined,
+    };
+
+    return NextResponse.json({ transaction: transformedTransaction }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

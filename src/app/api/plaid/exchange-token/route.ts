@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { plaidClient, encryptAccessToken, mapPlaidAccountType } from "@/lib/plaid";
+import { randomUUID } from "crypto";
 
 const exchangeTokenSchema = z.object({
   public_token: z.string(),
@@ -40,11 +41,13 @@ export async function POST(request: Request) {
     // Create PlaidItem record
     const plaidItem = await prisma.plaidItem.create({
       data: {
+        id: randomUUID(),
         userId: session.user.id,
         accessToken: encryptedAccessToken,
         itemId,
         institutionId: metadata?.institution?.institution_id,
         institutionName: metadata?.institution?.name,
+        updatedAt: new Date(),
       },
     });
 
@@ -58,6 +61,7 @@ export async function POST(request: Request) {
       accountsResponse.data.accounts.map((account) =>
         prisma.bankAccount.create({
           data: {
+            id: randomUUID(),
             userId: session.user.id,
             plaidItemId: plaidItem.id,
             plaidAccountId: account.account_id,
@@ -70,6 +74,7 @@ export async function POST(request: Request) {
             availableBalance: account.balances.available,
             isoCurrencyCode: account.balances.iso_currency_code || "USD",
             lastBalanceUpdate: new Date(),
+            updatedAt: new Date(),
           },
         })
       )
@@ -111,7 +116,7 @@ async function syncTransactions(
     // Get existing cursor if any
     const plaidItem = await prisma.plaidItem.findUnique({
       where: { id: plaidItemId },
-      include: { bankAccounts: true },
+      include: { BankAccount: true },
     });
 
     if (!plaidItem) return;
@@ -129,7 +134,7 @@ async function syncTransactions(
 
       // Process added transactions
       for (const transaction of added) {
-        const bankAccount = plaidItem.bankAccounts.find(
+        const bankAccount = plaidItem.BankAccount.find(
           (a) => a.plaidAccountId === transaction.account_id
         );
         if (!bankAccount) continue;
@@ -137,6 +142,7 @@ async function syncTransactions(
         await prisma.transaction.upsert({
           where: { plaidTransactionId: transaction.transaction_id },
           create: {
+            id: randomUUID(),
             userId,
             bankAccountId: bankAccount.id,
             plaidTransactionId: transaction.transaction_id,
@@ -160,6 +166,7 @@ async function syncTransactions(
                   country: transaction.location.country,
                 }
               : undefined,
+            updatedAt: new Date(),
           },
           update: {
             amount: transaction.amount,

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { randomUUID } from "crypto";
 
 const incomeConfigSchema = z.object({
   projectedMonthlyIncome: z.number().min(0),
@@ -68,6 +69,7 @@ export async function PUT(request: Request) {
     const config = await prisma.incomeConfig.upsert({
       where: { userId: session.user.id },
       create: {
+        id: randomUUID(),
         userId: session.user.id,
         projectedMonthlyIncome: data.projectedMonthlyIncome,
         payFrequency: data.payFrequency,
@@ -78,6 +80,7 @@ export async function PUT(request: Request) {
         monthlySavingsGoal: data.monthlySavingsGoal,
         savingsIsPercent: data.savingsIsPercent || false,
         onboardingComplete: data.onboardingComplete || false,
+        updatedAt: new Date(),
       },
       update: {
         projectedMonthlyIncome: data.projectedMonthlyIncome,
