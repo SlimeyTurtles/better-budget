@@ -54,9 +54,35 @@ export async function GET() {
         const progressPercent = targetAmount > 0
           ? Math.min(100, Math.round((currentAmount / targetAmount) * 100))
           : 0;
+
+        // daysUntilGoal: at current savings rate from income config
         const daysUntilGoal = dailySavingsRate > 0 && remaining > 0
           ? Math.ceil(remaining / dailySavingsRate)
           : remaining === 0 ? 0 : null;
+
+        // daysUntilDeadline: days until the target date
+        let daysUntilDeadline: number | null = null;
+        let contributionNeeded: number | null = null;
+        let monthlyContributionNeeded: number | null = null;
+        let isOnTrack = true;
+
+        if (goal.targetDate) {
+          const targetDate = new Date(goal.targetDate);
+          const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          const diffTime = targetDate.getTime() - todayStart.getTime();
+          daysUntilDeadline = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (daysUntilDeadline > 0 && remaining > 0) {
+            contributionNeeded = remaining / daysUntilDeadline;
+            monthlyContributionNeeded = contributionNeeded * 30.44; // Average days in month
+
+            // Check if on track (can meet goal with current daily savings rate)
+            isOnTrack = dailySavingsRate >= contributionNeeded;
+          } else if (daysUntilDeadline <= 0 && remaining > 0) {
+            // Past deadline and not complete
+            isOnTrack = false;
+          }
+        }
 
         return {
           id: goal.id,
@@ -66,6 +92,10 @@ export async function GET() {
           remaining,
           progressPercent,
           targetDate: goal.targetDate?.toISOString().split("T")[0] ?? null,
+          daysUntilDeadline,
+          contributionNeeded: contributionNeeded !== null ? Math.round(contributionNeeded * 100) / 100 : null,
+          monthlyContributionNeeded: monthlyContributionNeeded !== null ? Math.round(monthlyContributionNeeded * 100) / 100 : null,
+          isOnTrack,
           isComplete: goal.isComplete,
           isPrimary: goal.isPrimary,
           daysUntilGoal,

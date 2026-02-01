@@ -4,9 +4,15 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
+const budgetPeriodTypes = ["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"] as const;
+
 const updateBudgetGoalSchema = z.object({
   category: z.string().min(1).max(100).optional(),
-  monthlyLimit: z.number().positive().max(999999999).optional(),
+  periodType: z.enum(budgetPeriodTypes).optional(),
+  periodAmount: z.number().positive().max(999999999).optional(),
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
+  periodStartDay: z.number().min(0).max(31).nullable().optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -38,7 +44,11 @@ export async function GET(
       goal: {
         id: goal.id,
         category: goal.category,
-        monthlyLimit: Number(goal.monthlyLimit),
+        periodType: goal.periodType,
+        periodAmount: Number(goal.periodAmount),
+        startDate: goal.startDate?.toISOString().split("T")[0] ?? null,
+        endDate: goal.endDate?.toISOString().split("T")[0] ?? null,
+        periodStartDay: goal.periodStartDay,
         isActive: goal.isActive,
         createdAt: goal.createdAt.toISOString(),
       },
@@ -101,8 +111,17 @@ export async function PUT(
       where: { id },
       data: {
         ...(validatedData.category !== undefined && { category: validatedData.category }),
-        ...(validatedData.monthlyLimit !== undefined && { monthlyLimit: validatedData.monthlyLimit }),
+        ...(validatedData.periodType !== undefined && { periodType: validatedData.periodType }),
+        ...(validatedData.periodAmount !== undefined && { periodAmount: validatedData.periodAmount }),
+        ...(validatedData.startDate !== undefined && {
+          startDate: validatedData.startDate ? new Date(validatedData.startDate) : null
+        }),
+        ...(validatedData.endDate !== undefined && {
+          endDate: validatedData.endDate ? new Date(validatedData.endDate) : null
+        }),
+        ...(validatedData.periodStartDay !== undefined && { periodStartDay: validatedData.periodStartDay }),
         ...(validatedData.isActive !== undefined && { isActive: validatedData.isActive }),
+        updatedAt: new Date(),
       },
     });
 
@@ -110,7 +129,11 @@ export async function PUT(
       goal: {
         id: goal.id,
         category: goal.category,
-        monthlyLimit: Number(goal.monthlyLimit),
+        periodType: goal.periodType,
+        periodAmount: Number(goal.periodAmount),
+        startDate: goal.startDate?.toISOString().split("T")[0] ?? null,
+        endDate: goal.endDate?.toISOString().split("T")[0] ?? null,
+        periodStartDay: goal.periodStartDay,
         isActive: goal.isActive,
       },
     });

@@ -83,9 +83,58 @@ export interface IncomeConfigFormData {
   monthlySavingsGoal: number;
 }
 
+export type BudgetPeriodType = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM";
+
 export interface BudgetGoalFormData {
   category: string;
-  monthlyLimit: number;
+  periodType: BudgetPeriodType;
+  periodAmount: number;
+  startDate?: string;
+  endDate?: string;
+  periodStartDay?: number;
+}
+
+export interface BudgetGoal {
+  id: string;
+  category: string;
+  periodType: BudgetPeriodType;
+  periodAmount: number;
+  startDate: string | null;
+  endDate: string | null;
+  periodStartDay: number | null;
+  isActive: boolean;
+  createdAt?: string;
+}
+
+export interface EnhancedBudgetGoal extends BudgetGoal {
+  currentSpending: number;
+  remaining: number;
+  percentUsed: number;
+  isOverBudget: boolean;
+  periodStart: string;
+  periodEnd: string;
+  daysRemainingInPeriod: number;
+  dailyAllowance: number;
+  monthlyEquivalent: number;
+  isExpired: boolean;
+}
+
+export interface BudgetSummary {
+  totalMonthlyIncome: number;
+  fixedExpenses: number;
+  totalBudgetAllocations: number;
+  savingsGoal: number;
+  remainingDiscretionary: number;
+  dailyDiscretionary: number;
+  isOverAllocated: boolean;
+  totalCurrentSpending: number;
+  goalsCount: number;
+  overBudgetCount: number;
+}
+
+export interface BudgetSummaryResponse {
+  goals: EnhancedBudgetGoal[];
+  summary: BudgetSummary;
 }
 
 // Helper to convert Prisma Decimal to number

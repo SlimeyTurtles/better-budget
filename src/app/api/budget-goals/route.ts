@@ -5,9 +5,24 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 
+const budgetPeriodTypes = ["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"] as const;
+
 const createBudgetGoalSchema = z.object({
   category: z.string().min(1, "Category is required").max(100),
-  monthlyLimit: z.number().positive("Monthly limit must be positive").max(999999999),
+  periodType: z.enum(budgetPeriodTypes).default("MONTHLY"),
+  periodAmount: z.number().positive("Budget amount must be positive").max(999999999),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  periodStartDay: z.number().min(0).max(31).optional(),
+}).refine((data) => {
+  // CUSTOM period requires both startDate and endDate
+  if (data.periodType === "CUSTOM") {
+    return data.startDate && data.endDate;
+  }
+  return true;
+}, {
+  message: "Custom period requires both start and end dates",
+  path: ["startDate"],
 });
 
 export async function GET() {
@@ -30,7 +45,11 @@ export async function GET() {
       goals: goals.map((goal) => ({
         id: goal.id,
         category: goal.category,
-        monthlyLimit: Number(goal.monthlyLimit),
+        periodType: goal.periodType,
+        periodAmount: Number(goal.periodAmount),
+        startDate: goal.startDate?.toISOString().split("T")[0] ?? null,
+        endDate: goal.endDate?.toISOString().split("T")[0] ?? null,
+        periodStartDay: goal.periodStartDay,
         isActive: goal.isActive,
         createdAt: goal.createdAt.toISOString(),
       })),
@@ -71,15 +90,24 @@ export async function POST(request: Request) {
         const updated = await prisma.budgetGoal.update({
           where: { id: existing.id },
           data: {
-            monthlyLimit: validatedData.monthlyLimit,
+            periodType: validatedData.periodType,
+            periodAmount: validatedData.periodAmount,
+            startDate: validatedData.startDate ? new Date(validatedData.startDate) : null,
+            endDate: validatedData.endDate ? new Date(validatedData.endDate) : null,
+            periodStartDay: validatedData.periodStartDay ?? null,
             isActive: true,
+            updatedAt: new Date(),
           },
         });
         return NextResponse.json({
           goal: {
             id: updated.id,
             category: updated.category,
-            monthlyLimit: Number(updated.monthlyLimit),
+            periodType: updated.periodType,
+            periodAmount: Number(updated.periodAmount),
+            startDate: updated.startDate?.toISOString().split("T")[0] ?? null,
+            endDate: updated.endDate?.toISOString().split("T")[0] ?? null,
+            periodStartDay: updated.periodStartDay,
             isActive: updated.isActive,
           },
         }, { status: 201 });
@@ -95,7 +123,11 @@ export async function POST(request: Request) {
         id: randomUUID(),
         userId: session.user.id,
         category: validatedData.category,
-        monthlyLimit: validatedData.monthlyLimit,
+        periodType: validatedData.periodType,
+        periodAmount: validatedData.periodAmount,
+        startDate: validatedData.startDate ? new Date(validatedData.startDate) : null,
+        endDate: validatedData.endDate ? new Date(validatedData.endDate) : null,
+        periodStartDay: validatedData.periodStartDay ?? null,
         updatedAt: new Date(),
       },
     });
@@ -104,7 +136,11 @@ export async function POST(request: Request) {
       goal: {
         id: goal.id,
         category: goal.category,
-        monthlyLimit: Number(goal.monthlyLimit),
+        periodType: goal.periodType,
+        periodAmount: Number(goal.periodAmount),
+        startDate: goal.startDate?.toISOString().split("T")[0] ?? null,
+        endDate: goal.endDate?.toISOString().split("T")[0] ?? null,
+        periodStartDay: goal.periodStartDay,
         isActive: goal.isActive,
       },
     }, { status: 201 });

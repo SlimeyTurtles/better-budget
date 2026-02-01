@@ -50,14 +50,18 @@ model BankAccount {
 }
 
 model BudgetGoal {
-  id           String   @id
-  userId       String
-  category     String
-  monthlyLimit Decimal  @db.Decimal(19, 4)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime
-  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String           @id
+  userId         String
+  category       String
+  periodType     BudgetPeriodType @default(MONTHLY)
+  periodAmount   Decimal          @db.Decimal(19, 4)
+  startDate      DateTime?        @db.Date
+  endDate        DateTime?        @db.Date
+  periodStartDay Int?
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  User           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, category])
 }
@@ -222,4 +226,11 @@ enum PlaidItemStatus {
   ACTIVE
   NEEDS_REAUTH
   DISCONNECTED
+}
+
+enum BudgetPeriodType {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  CUSTOM
 }

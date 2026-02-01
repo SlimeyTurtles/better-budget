@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import type { BudgetPeriodType } from "@/types";
 
 type BudgetType = "spending" | "savings";
 
@@ -11,18 +12,28 @@ interface BudgetModalProps {
     type: BudgetType;
     category?: string;
     name?: string;
-    monthlyLimit?: number;
+    periodType?: BudgetPeriodType;
+    periodAmount?: number;
+    startDate?: string;
+    endDate?: string;
+    periodStartDay?: number;
     targetAmount?: number;
     currentAmount?: number;
+    targetDate?: string;
   }) => Promise<void>;
   editingBudget?: {
     id: string;
     type: BudgetType;
     category?: string;
     name?: string;
-    monthlyLimit?: number;
+    periodType?: BudgetPeriodType;
+    periodAmount?: number;
+    startDate?: string | null;
+    endDate?: string | null;
+    periodStartDay?: number | null;
     targetAmount?: number;
     currentAmount?: number;
+    targetDate?: string | null;
   } | null;
 }
 
@@ -42,6 +53,23 @@ const COMMON_CATEGORIES = [
   "Other",
 ];
 
+const PERIOD_TYPES: { value: BudgetPeriodType; label: string }[] = [
+  { value: "WEEKLY", label: "Weekly" },
+  { value: "BIWEEKLY", label: "Every 2 Weeks" },
+  { value: "MONTHLY", label: "Monthly" },
+  { value: "CUSTOM", label: "One-time" },
+];
+
+const WEEK_DAYS = [
+  { value: 0, label: "Sunday" },
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+  { value: 6, label: "Saturday" },
+];
+
 export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetModalProps) {
   const [type, setType] = useState<BudgetType>("spending");
   const [category, setCategory] = useState("");
@@ -49,6 +77,11 @@ export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetMo
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [currentAmount, setCurrentAmount] = useState("");
+  const [periodType, setPeriodType] = useState<BudgetPeriodType>("MONTHLY");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [periodStartDay, setPeriodStartDay] = useState(0);
+  const [targetDate, setTargetDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -61,11 +94,16 @@ export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetMo
           const isCommon = COMMON_CATEGORIES.includes(editingBudget.category || "");
           setCategory(isCommon ? editingBudget.category || "" : "Other");
           setCustomCategory(isCommon ? "" : editingBudget.category || "");
-          setAmount(editingBudget.monthlyLimit?.toString() || "");
+          setAmount(editingBudget.periodAmount?.toString() || "");
+          setPeriodType(editingBudget.periodType || "MONTHLY");
+          setStartDate(editingBudget.startDate || "");
+          setEndDate(editingBudget.endDate || "");
+          setPeriodStartDay(editingBudget.periodStartDay ?? 0);
         } else {
           setName(editingBudget.name || "");
           setAmount(editingBudget.targetAmount?.toString() || "");
           setCurrentAmount(editingBudget.currentAmount?.toString() || "0");
+          setTargetDate(editingBudget.targetDate || "");
         }
       } else {
         setType("spending");
@@ -74,6 +112,11 @@ export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetMo
         setName("");
         setAmount("");
         setCurrentAmount("");
+        setPeriodType("MONTHLY");
+        setStartDate("");
+        setEndDate("");
+        setPeriodStartDay(0);
+        setTargetDate("");
       }
       setError("");
     }
@@ -95,12 +138,29 @@ export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetMo
         setError("Please select or enter a category");
         return;
       }
+
+      // Validate CUSTOM period dates
+      if (periodType === "CUSTOM") {
+        if (!startDate || !endDate) {
+          setError("Please enter both start and end dates for one-time budgets");
+          return;
+        }
+        if (new Date(endDate) <= new Date(startDate)) {
+          setError("End date must be after start date");
+          return;
+        }
+      }
+
       setIsSubmitting(true);
       try {
         await onSave({
           type: "spending",
           category: finalCategory.trim(),
-          monthlyLimit: numAmount,
+          periodType,
+          periodAmount: numAmount,
+          ...(periodType === "CUSTOM" && { startDate, endDate }),
+          ...(periodType === "WEEKLY" && { periodStartDay }),
+          ...(periodType === "MONTHLY" && { periodStartDay: periodStartDay || 1 }),
         });
         onClose();
       } catch (err) {
@@ -121,6 +181,7 @@ export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetMo
           name: name.trim(),
           targetAmount: numAmount,
           currentAmount: numCurrentAmount,
+          ...(targetDate && { targetDate }),
         });
         onClose();
       } catch (err) {
@@ -131,11 +192,24 @@ export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetMo
     }
   };
 
+  const getAmountLabel = () => {
+    switch (periodType) {
+      case "WEEKLY":
+        return "Weekly Limit";
+      case "BIWEEKLY":
+        return "Biweekly Limit";
+      case "CUSTOM":
+        return "Total Budget";
+      default:
+        return "Monthly Limit";
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-800 p-6 shadow-2xl">
+      <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-800 p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -221,9 +295,96 @@ export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetMo
                 </div>
               )}
 
+              {/* Period Type */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Monthly Limit
+                  Budget Period
+                </label>
+                <select
+                  value={periodType}
+                  onChange={(e) => setPeriodType(e.target.value as BudgetPeriodType)}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-blue-500"
+                >
+                  {PERIOD_TYPES.map((pt) => (
+                    <option key={pt.value} value={pt.value}>
+                      {pt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Weekly Start Day */}
+              {periodType === "WEEKLY" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Week Starts On
+                  </label>
+                  <select
+                    value={periodStartDay}
+                    onChange={(e) => setPeriodStartDay(parseInt(e.target.value))}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    {WEEK_DAYS.map((day) => (
+                      <option key={day.value} value={day.value}>
+                        {day.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Monthly Start Day */}
+              {periodType === "MONTHLY" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Month Starts On Day
+                  </label>
+                  <select
+                    value={periodStartDay || 1}
+                    onChange={(e) => setPeriodStartDay(parseInt(e.target.value))}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                      <option key={day} value={day}>
+                        {day === 1 ? "1st (default)" : day}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Custom Period Dates */}
+              {periodType === "CUSTOM" && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      min={startDate || undefined}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  {getAmountLabel()}
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
@@ -297,6 +458,22 @@ export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetMo
                     className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 pl-7 pr-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Target Date (Optional)
+                </label>
+                <input
+                  type="date"
+                  value={targetDate}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Set a deadline to track how much you need to save daily
+                </p>
               </div>
             </>
           )}

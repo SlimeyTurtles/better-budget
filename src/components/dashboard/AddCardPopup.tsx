@@ -7,7 +7,8 @@ import { CardType } from "@/types/dashboard";
 interface BudgetGoal {
   id: string;
   category: string;
-  monthlyLimit: number;
+  periodType: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM";
+  periodAmount: number;
 }
 
 interface SavingsGoal {

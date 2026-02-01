@@ -121,17 +121,25 @@ export interface TotalExpensesData {
 
 export interface BudgetRemainingData {
   category: string;
-  monthlyLimit: number;
+  periodType: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM";
+  periodAmount: number;
   currentSpending: number;
   remaining: number;
   percentUsed: number;
+  daysRemainingInPeriod?: number;
+  dailyAllowance?: number;
+  periodStart?: string;
+  periodEnd?: string;
 }
 
 export interface BudgetTotalRemainingData {
-  totalLimit: number;
-  totalSpending: number;
-  totalRemaining: number;
+  totalMonthlyIncome: number;
+  totalBudgetAllocations: number;
+  remainingDiscretionary: number;
+  dailyDiscretionary: number;
+  totalCurrentSpending: number;
   percentUsed: number;
+  isOverAllocated: boolean;
 }
 
 export interface SavingsProgressData {
@@ -139,7 +147,12 @@ export interface SavingsProgressData {
   targetAmount: number;
   currentAmount: number;
   progressPercent: number;
+  targetDate?: string | null;
+  daysUntilDeadline?: number | null;
   daysUntilGoal?: number | null;
+  contributionNeeded?: number | null;
+  monthlyContributionNeeded?: number | null;
+  isOnTrack?: boolean;
 }
 
 export interface EmergencyFundData {

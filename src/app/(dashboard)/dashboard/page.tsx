@@ -33,10 +33,13 @@ interface TrendlineDataPoint {
 interface BudgetGoal {
   id: string;
   category: string;
-  monthlyLimit: number;
+  periodType: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM";
+  periodAmount: number;
   currentSpending?: number;
   remaining?: number;
   percentUsed?: number;
+  daysRemainingInPeriod?: number;
+  dailyAllowance?: number;
 }
 
 interface SavingsGoal {
@@ -45,7 +48,12 @@ interface SavingsGoal {
   targetAmount: number;
   currentAmount: number;
   progressPercent?: number;
+  targetDate?: string | null;
+  daysUntilDeadline?: number | null;
   daysUntilGoal?: number | null;
+  contributionNeeded?: number | null;
+  monthlyContributionNeeded?: number | null;
+  isOnTrack?: boolean;
 }
 
 type TimePeriod = "daily" | "weekly" | "biweekly" | "monthly";
@@ -84,10 +92,12 @@ export default function DashboardPage() {
   const [budgetGoals, setBudgetGoals] = useState<BudgetGoal[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [budgetSummary, setBudgetSummary] = useState<{
-    totalLimit: number;
-    totalSpending: number;
-    totalRemaining: number;
-    totalPercentUsed: number;
+    totalMonthlyIncome: number;
+    totalBudgetAllocations: number;
+    remainingDiscretionary: number;
+    dailyDiscretionary: number;
+    totalCurrentSpending: number;
+    isOverAllocated: boolean;
   } | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -99,7 +109,6 @@ export default function DashboardPage() {
         spendingRes,
         emergencyFundRes,
         dashboardConfigRes,
-        budgetGoalsRes,
         savingsGoalsRes,
         budgetSummaryRes,
       ] = await Promise.all([
@@ -109,7 +118,6 @@ export default function DashboardPage() {
         fetch("/api/analytics/spending?period=monthly"),
         fetch("/api/savings-goals/emergency-fund"),
         fetch("/api/dashboard-config"),
-        fetch("/api/budget-goals"),
         fetch("/api/savings-goals"),
         fetch("/api/analytics/budget-summary"),
       ]);
@@ -120,7 +128,6 @@ export default function DashboardPage() {
       const spendingData = await spendingRes.json();
       const emergencyFundData = await emergencyFundRes.json();
       const dashboardConfigData = await dashboardConfigRes.json();
-      const budgetGoalsData = await budgetGoalsRes.json();
       const savingsGoalsData = await savingsGoalsRes.json();
       const budgetSummaryData = await budgetSummaryRes.json();
 
@@ -157,17 +164,8 @@ export default function DashboardPage() {
       // Set dashboard configuration
       setDashboardCards(dashboardConfigData.cards || DEFAULT_DASHBOARD_CARDS);
 
-      // Set budget goals with spending data
-      const goalsWithSpending = (budgetGoalsData.goals || []).map((goal: BudgetGoal) => {
-        const summaryGoal = budgetSummaryData.goals?.find((g: BudgetGoal) => g.id === goal.id);
-        return {
-          ...goal,
-          currentSpending: summaryGoal?.currentSpending || 0,
-          remaining: summaryGoal?.remaining || goal.monthlyLimit,
-          percentUsed: summaryGoal?.percentUsed || 0,
-        };
-      });
-      setBudgetGoals(goalsWithSpending);
+      // Set budget goals directly from budget summary (it already has spending data)
+      setBudgetGoals(budgetSummaryData.goals || []);
 
       // Set savings goals
       setSavingsGoals(savingsGoalsData.goals || []);
@@ -175,10 +173,12 @@ export default function DashboardPage() {
       // Set budget summary totals
       if (budgetSummaryData.summary) {
         setBudgetSummary({
-          totalLimit: budgetSummaryData.summary.totalLimit,
-          totalSpending: budgetSummaryData.summary.totalSpending,
-          totalRemaining: budgetSummaryData.summary.totalRemaining,
-          totalPercentUsed: budgetSummaryData.summary.totalPercentUsed,
+          totalMonthlyIncome: budgetSummaryData.summary.totalMonthlyIncome,
+          totalBudgetAllocations: budgetSummaryData.summary.totalBudgetAllocations,
+          remainingDiscretionary: budgetSummaryData.summary.remainingDiscretionary,
+          dailyDiscretionary: budgetSummaryData.summary.dailyDiscretionary,
+          totalCurrentSpending: budgetSummaryData.summary.totalCurrentSpending,
+          isOverAllocated: budgetSummaryData.summary.isOverAllocated,
         });
       }
     } catch (error) {
@@ -235,22 +235,30 @@ export default function DashboardPage() {
     },
     BUDGET_TOTAL_REMAINING: budgetSummary
       ? {
-          totalLimit: budgetSummary.totalLimit,
-          totalSpending: budgetSummary.totalSpending,
-          totalRemaining: budgetSummary.totalRemaining,
-          percentUsed: budgetSummary.totalPercentUsed,
+          totalMonthlyIncome: budgetSummary.totalMonthlyIncome,
+          totalBudgetAllocations: budgetSummary.totalBudgetAllocations,
+          remainingDiscretionary: budgetSummary.remainingDiscretionary,
+          dailyDiscretionary: budgetSummary.dailyDiscretionary,
+          totalCurrentSpending: budgetSummary.totalCurrentSpending,
+          percentUsed: budgetSummary.totalBudgetAllocations > 0
+            ? Math.round((budgetSummary.totalCurrentSpending / budgetSummary.totalBudgetAllocations) * 100)
+            : 0,
+          isOverAllocated: budgetSummary.isOverAllocated,
         }
-      : { totalLimit: 0, totalSpending: 0, totalRemaining: 0, percentUsed: 0 },
+      : { totalMonthlyIncome: 0, totalBudgetAllocations: 0, remainingDiscretionary: 0, dailyDiscretionary: 0, totalCurrentSpending: 0, percentUsed: 0, isOverAllocated: false },
   };
 
   // Add budget goal data
   budgetGoals.forEach((goal) => {
     cardDataMap[`budget-${goal.id}`] = {
       category: goal.category,
-      monthlyLimit: goal.monthlyLimit,
+      periodType: goal.periodType,
+      periodAmount: goal.periodAmount,
       currentSpending: goal.currentSpending || 0,
-      remaining: goal.remaining || goal.monthlyLimit,
+      remaining: goal.remaining || goal.periodAmount,
       percentUsed: goal.percentUsed || 0,
+      daysRemainingInPeriod: goal.daysRemainingInPeriod,
+      dailyAllowance: goal.dailyAllowance,
     };
   });
 
@@ -261,7 +269,12 @@ export default function DashboardPage() {
       targetAmount: goal.targetAmount,
       currentAmount: goal.currentAmount,
       progressPercent: goal.progressPercent || 0,
+      targetDate: goal.targetDate,
+      daysUntilDeadline: goal.daysUntilDeadline,
       daysUntilGoal: goal.daysUntilGoal,
+      contributionNeeded: goal.contributionNeeded,
+      monthlyContributionNeeded: goal.monthlyContributionNeeded,
+      isOnTrack: goal.isOnTrack,
     };
   });
 

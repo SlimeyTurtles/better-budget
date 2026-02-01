@@ -5,6 +5,7 @@ import { SpendingOverTimeChart } from "@/components/charts/SpendingOverTimeChart
 import { CategoryBreakdownChart } from "@/components/charts/CategoryBreakdownChart";
 import { BudgetModal, BudgetList } from "@/components/budget";
 import { formatCurrency } from "@/lib/utils";
+import type { BudgetPeriodType, EnhancedBudgetGoal, BudgetSummary } from "@/types";
 
 interface SpendingData {
   spendingData: Array<{ date: string; amount: number }>;
@@ -16,40 +17,25 @@ interface SpendingData {
   }>;
 }
 
-interface IncomeConfig {
-  projectedMonthlyIncome: number;
-  rentAmount: number;
-  monthlySavingsGoal: number;
-}
-
-interface BudgetGoal {
-  id: string;
-  category: string;
-  monthlyLimit: number;
-  currentSpending: number;
-  remaining: number;
-  percentUsed: number;
-  isOverBudget?: boolean;
-}
-
 interface SavingsGoal {
   id: string;
   name: string;
   targetAmount: number;
   currentAmount: number;
   progressPercent: number;
+  targetDate?: string | null;
   daysUntilGoal?: number | null;
   isComplete?: boolean;
 }
 
 export default function BudgetPage() {
   const [spending, setSpending] = useState<SpendingData | null>(null);
-  const [incomeConfig, setIncomeConfig] = useState<IncomeConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
 
   // Budget management state
-  const [budgetGoals, setBudgetGoals] = useState<BudgetGoal[]>([]);
+  const [budgetGoals, setBudgetGoals] = useState<EnhancedBudgetGoal[]>([]);
+  const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<{
@@ -57,42 +43,31 @@ export default function BudgetPage() {
     type: "spending" | "savings";
     category?: string;
     name?: string;
-    monthlyLimit?: number;
+    periodType?: BudgetPeriodType;
+    periodAmount?: number;
+    startDate?: string | null;
+    endDate?: string | null;
+    periodStartDay?: number | null;
     targetAmount?: number;
     currentAmount?: number;
+    targetDate?: string | null;
   } | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [spendingRes, incomeRes, budgetGoalsRes, savingsGoalsRes, budgetSummaryRes] = await Promise.all([
+      const [spendingRes, savingsGoalsRes, budgetSummaryRes] = await Promise.all([
         fetch(`/api/analytics/spending?period=${period}`),
-        fetch("/api/income-config"),
-        fetch("/api/budget-goals"),
         fetch("/api/savings-goals"),
         fetch("/api/analytics/budget-summary"),
       ]);
 
       const spendingData = await spendingRes.json();
-      const incomeData = await incomeRes.json();
-      const budgetGoalsData = await budgetGoalsRes.json();
       const savingsGoalsData = await savingsGoalsRes.json();
       const budgetSummaryData = await budgetSummaryRes.json();
 
       setSpending(spendingData);
-      setIncomeConfig(incomeData.config);
-
-      // Merge budget goals with spending data
-      const goalsWithSpending = (budgetGoalsData.goals || []).map((goal: BudgetGoal) => {
-        const summaryGoal = budgetSummaryData.goals?.find((g: BudgetGoal) => g.id === goal.id);
-        return {
-          ...goal,
-          currentSpending: summaryGoal?.currentSpending || 0,
-          remaining: summaryGoal?.remaining || goal.monthlyLimit,
-          percentUsed: summaryGoal?.percentUsed || 0,
-          isOverBudget: summaryGoal?.isOverBudget || false,
-        };
-      });
-      setBudgetGoals(goalsWithSpending);
+      setBudgetGoals(budgetSummaryData.goals || []);
+      setBudgetSummary(budgetSummaryData.summary || null);
       setSavingsGoals(savingsGoalsData.goals || []);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -110,9 +85,14 @@ export default function BudgetPage() {
     type: "spending" | "savings";
     category?: string;
     name?: string;
-    monthlyLimit?: number;
+    periodType?: BudgetPeriodType;
+    periodAmount?: number;
+    startDate?: string;
+    endDate?: string;
+    periodStartDay?: number;
     targetAmount?: number;
     currentAmount?: number;
+    targetDate?: string;
   }) => {
     if (editingBudget) {
       // Update existing
@@ -122,7 +102,11 @@ export default function BudgetPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             category: data.category,
-            monthlyLimit: data.monthlyLimit,
+            periodType: data.periodType,
+            periodAmount: data.periodAmount,
+            startDate: data.startDate || null,
+            endDate: data.endDate || null,
+            periodStartDay: data.periodStartDay ?? null,
           }),
         });
         if (!res.ok) {
@@ -137,6 +121,7 @@ export default function BudgetPage() {
             name: data.name,
             targetAmount: data.targetAmount,
             currentAmount: data.currentAmount,
+            targetDate: data.targetDate || null,
           }),
         });
         if (!res.ok) {
@@ -152,7 +137,11 @@ export default function BudgetPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             category: data.category,
-            monthlyLimit: data.monthlyLimit,
+            periodType: data.periodType || "MONTHLY",
+            periodAmount: data.periodAmount,
+            startDate: data.startDate,
+            endDate: data.endDate,
+            periodStartDay: data.periodStartDay,
           }),
         });
         if (!res.ok) {
@@ -167,6 +156,7 @@ export default function BudgetPage() {
             name: data.name,
             targetAmount: data.targetAmount,
             currentAmount: data.currentAmount || 0,
+            targetDate: data.targetDate || null,
           }),
         });
         if (!res.ok) {
@@ -187,7 +177,11 @@ export default function BudgetPage() {
         id,
         type: "spending",
         category: goal.category,
-        monthlyLimit: goal.monthlyLimit,
+        periodType: goal.periodType,
+        periodAmount: goal.periodAmount,
+        startDate: goal.startDate,
+        endDate: goal.endDate,
+        periodStartDay: goal.periodStartDay,
       });
       setIsModalOpen(true);
     }
@@ -202,6 +196,7 @@ export default function BudgetPage() {
         name: goal.name,
         targetAmount: goal.targetAmount,
         currentAmount: goal.currentAmount,
+        targetDate: goal.targetDate,
       });
       setIsModalOpen(true);
     }
@@ -236,21 +231,20 @@ export default function BudgetPage() {
     );
   }
 
-  // Calculate budget metrics
-  const monthlyIncome = incomeConfig?.projectedMonthlyIncome || 0;
-  const rentAmount = incomeConfig?.rentAmount || 0;
-  const savingsGoal = incomeConfig?.monthlySavingsGoal || 0;
-  const totalObligations = rentAmount + savingsGoal;
-  const availableBudget = monthlyIncome - totalObligations;
+  // Use budget summary data for metrics
+  const monthlyIncome = budgetSummary?.totalMonthlyIncome || 0;
+  const fixedExpenses = budgetSummary?.fixedExpenses || 0;
+  const totalBudgetAllocations = budgetSummary?.totalBudgetAllocations || 0;
+  const savingsGoal = budgetSummary?.savingsGoal || 0;
+  const remainingDiscretionary = budgetSummary?.remainingDiscretionary || 0;
+  const dailyDiscretionary = budgetSummary?.dailyDiscretionary || 0;
   const totalSpent = spending?.totalSpending || 0;
-  const remaining = availableBudget - totalSpent;
+  const isOverAllocated = budgetSummary?.isOverAllocated || false;
 
-  // Calculate daily/weekly allowance
+  // Calculate days remaining
   const today = new Date();
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
   const daysRemaining = daysInMonth - today.getDate() + 1;
-  const dailyAllowance = remaining > 0 ? remaining / daysRemaining : 0;
-  const weeklyAllowance = dailyAllowance * 7;
 
   return (
     <div className="space-y-6">
@@ -271,53 +265,74 @@ export default function BudgetPage() {
           </p>
         </div>
         <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Available Budget</p>
-          <p className="mt-2 text-2xl font-bold text-blue-600 dark:text-blue-400">
-            {formatCurrency(availableBudget)}
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Fixed Expenses</p>
+          <p className="mt-2 text-2xl font-bold text-red-600 dark:text-red-400">
+            {formatCurrency(fixedExpenses)}
           </p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            After rent ({formatCurrency(rentAmount)}) + savings ({formatCurrency(savingsGoal)})
+            Rent + Utilities
+          </p>
+        </div>
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Budget Allocations</p>
+          <p className="mt-2 text-2xl font-bold text-blue-600 dark:text-blue-400">
+            {formatCurrency(totalBudgetAllocations)}
+          </p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            + {formatCurrency(savingsGoal)} savings
           </p>
         </div>
         <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Spent This Month</p>
-          <p className="mt-2 text-2xl font-bold text-red-600 dark:text-red-400">
+          <p className="mt-2 text-2xl font-bold text-orange-600 dark:text-orange-400">
             {formatCurrency(totalSpent)}
-          </p>
-        </div>
-        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Remaining</p>
-          <p
-            className={`mt-2 text-2xl font-bold ${
-              remaining >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-            }`}
-          >
-            {formatCurrency(remaining)}
           </p>
         </div>
       </div>
 
-      {/* Safe Spending Allowance */}
+      {/* Discretionary Spending */}
       {monthlyIncome > 0 && (
-        <div className="rounded-lg bg-gradient-to-r from-green-500 to-green-600 p-6 text-white shadow">
-          <h3 className="text-lg font-semibold">Safe Spending Allowance</h3>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div
+          className={`rounded-lg p-6 text-white shadow ${
+            isOverAllocated
+              ? "bg-gradient-to-r from-red-500 to-red-600"
+              : "bg-gradient-to-r from-green-500 to-green-600"
+          }`}
+        >
+          <h3 className="text-lg font-semibold">
+            {isOverAllocated ? "Over-Allocated Budget" : "Remaining Discretionary"}
+          </h3>
+          <p className="text-sm opacity-80 mt-1">
+            After fixed expenses, budget allocations, and savings goal
+          </p>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
             <div>
-              <p className="text-green-100">Daily</p>
+              <p className="opacity-80">Total Remaining</p>
               <p className="text-3xl font-bold">
-                {formatCurrency(dailyAllowance)}
+                {formatCurrency(remainingDiscretionary)}
               </p>
             </div>
             <div>
-              <p className="text-green-100">Weekly</p>
+              <p className="opacity-80">Daily Allowance</p>
               <p className="text-3xl font-bold">
-                {formatCurrency(weeklyAllowance)}
+                {formatCurrency(dailyDiscretionary)}
+              </p>
+            </div>
+            <div>
+              <p className="opacity-80">Weekly Allowance</p>
+              <p className="text-3xl font-bold">
+                {formatCurrency(dailyDiscretionary * 7)}
               </p>
             </div>
           </div>
-          <p className="mt-4 text-sm text-green-100">
+          <p className="mt-4 text-sm opacity-80">
             Based on {daysRemaining} days remaining this month
           </p>
+          {isOverAllocated && (
+            <p className="mt-2 text-sm font-medium">
+              Your budget allocations exceed your available income. Consider reducing some budgets.
+            </p>
+          )}
         </div>
       )}
 
