@@ -1,6 +1,6 @@
 # Better Budget
 
-A personal finance and budgeting app built with Next.js, designed for people living paycheck-to-paycheck who want to break that cycle.
+A personal finance and budgeting app built with Next.js, designed for people living paycheck-to-paycheck who want to break that cycle and save more money.
 
 ## Tech Stack
 
