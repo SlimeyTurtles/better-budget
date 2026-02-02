@@ -9,8 +9,10 @@ interface IncomeConfig {
   payFrequency: "WEEKLY" | "BIWEEKLY" | "SEMIMONTHLY" | "MONTHLY";
   nextPayDate?: string;
   rentAmount: number;
+  utilitiesAmount: number;
   rentDueDay: number;
   monthlySavingsGoal: number;
+  savingsIsPercent: boolean;
 }
 
 export default function IncomeSettingsPage() {
@@ -25,8 +27,10 @@ export default function IncomeSettingsPage() {
     payFrequency: "MONTHLY",
     nextPayDate: "",
     rentAmount: 0,
+    utilitiesAmount: 0,
     rentDueDay: 1,
     monthlySavingsGoal: 0,
+    savingsIsPercent: false,
   });
 
   useEffect(() => {
@@ -81,7 +85,10 @@ export default function IncomeSettingsPage() {
 
   // Calculate derived values
   const monthlyIncome = config.projectedMonthlyIncome;
-  const totalObligations = config.rentAmount + config.monthlySavingsGoal;
+  const savingsAmount = config.savingsIsPercent
+    ? (monthlyIncome * config.monthlySavingsGoal) / 100
+    : config.monthlySavingsGoal;
+  const totalObligations = config.rentAmount + config.utilitiesAmount + savingsAmount;
   const discretionaryIncome = monthlyIncome - totalObligations;
   const dailyBudget = discretionaryIncome / 30;
 
@@ -224,6 +231,27 @@ export default function IncomeSettingsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Utilities
+              </label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">$</span>
+                <input
+                  type="number"
+                  value={config.utilitiesAmount || ""}
+                  onChange={(e) =>
+                    setConfig({ ...config, utilitiesAmount: Number(e.target.value) })
+                  }
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 pl-8 pr-3 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="200"
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Electric, water, internet, etc.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Rent Due Day
               </label>
               <input
@@ -239,27 +267,46 @@ export default function IncomeSettingsPage() {
               />
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Monthly Savings Goal
               </label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">$</span>
-                <input
-                  type="number"
-                  value={config.monthlySavingsGoal || ""}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      monthlySavingsGoal: Number(e.target.value),
-                    })
+              <div className="mt-1 flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">
+                    {config.savingsIsPercent ? "%" : "$"}
+                  </span>
+                  <input
+                    type="number"
+                    value={config.monthlySavingsGoal || ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        monthlySavingsGoal: Number(e.target.value),
+                      })
+                    }
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 pl-8 pr-3 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder={config.savingsIsPercent ? "10" : "500"}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConfig({ ...config, savingsIsPercent: !config.savingsIsPercent })
                   }
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 pl-8 pr-3 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="500"
-                />
+                  className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    config.savingsIsPercent
+                      ? "bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300"
+                      : "bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                  }`}
+                >
+                  {config.savingsIsPercent ? "%" : "$"}
+                </button>
               </div>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Amount you want to save each month
+                {config.savingsIsPercent
+                  ? `${config.monthlySavingsGoal}% = ${formatCurrency(savingsAmount)}/month`
+                  : "Amount you want to save each month"}
               </p>
             </div>
           </div>

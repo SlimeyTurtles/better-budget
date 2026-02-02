@@ -27,6 +27,7 @@ interface TrendlineDataPoint {
   income: number;
   rent: number;
   savings: number;
+  commitments: number;
   actual: number | null;
 }
 
@@ -68,6 +69,7 @@ export default function DashboardPage() {
     income: 0,
     rent: 0,
     savings: 0,
+    commitments: 0,
   });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -141,7 +143,7 @@ export default function DashboardPage() {
       setTrendlineData(budgetData.trendlineData || []);
       setCurrentUnit(budgetData.currentUnit || 1);
       setTotalUnits(budgetData.totalUnits || 1);
-      setBudgetTargets(budgetData.targets || { income: 0, rent: 0, savings: 0 });
+      setBudgetTargets(budgetData.targets || { income: 0, rent: 0, savings: 0, commitments: 0 });
 
       // Calculate stats
       setStats({

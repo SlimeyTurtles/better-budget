@@ -4,8 +4,8 @@
 FROM node:20-alpine AS base
 WORKDIR /app
 
-# Install dependencies needed for Prisma and building
-RUN apk add --no-cache libc6-compat openssl
+# Install dependencies needed for Prisma, building, and timezone support
+RUN apk add --no-cache libc6-compat openssl tzdata
 
 # ---- Dependencies ----
 FROM base AS deps

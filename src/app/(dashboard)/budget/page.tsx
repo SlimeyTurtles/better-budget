@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { SpendingOverTimeChart } from "@/components/charts/SpendingOverTimeChart";
 import { CategoryBreakdownChart } from "@/components/charts/CategoryBreakdownChart";
-import { BudgetModal, BudgetList } from "@/components/budget";
+import { BudgetModal, BudgetList, BudgetCircleCard } from "@/components/budget";
 import { formatCurrency } from "@/lib/utils";
 import type { BudgetPeriodType, EnhancedBudgetGoal, BudgetSummary } from "@/types";
 
@@ -333,6 +333,83 @@ export default function BudgetPage() {
               Your budget allocations exceed your available income. Consider reducing some budgets.
             </p>
           )}
+        </div>
+      )}
+
+      {/* Budget Allocation Cards */}
+      {monthlyIncome > 0 && (
+        <div>
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Budget Breakdown
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              How your {formatCurrency(monthlyIncome)}/month is allocated
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {/* Fixed Expenses */}
+            {budgetSummary?.rentAmount && budgetSummary.rentAmount > 0 && (
+              <BudgetCircleCard
+                name="Rent"
+                allocated={budgetSummary.rentAmount}
+                spent={budgetSummary.rentAmount}
+                periodLabel="Monthly"
+                color="blue"
+                isFixedExpense
+              />
+            )}
+            {budgetSummary?.utilitiesAmount && budgetSummary.utilitiesAmount > 0 && (
+              <BudgetCircleCard
+                name="Utilities"
+                allocated={budgetSummary.utilitiesAmount}
+                spent={budgetSummary.utilitiesAmount}
+                periodLabel="Monthly"
+                color="blue"
+                isFixedExpense
+              />
+            )}
+
+            {/* Budget Goals */}
+            {budgetGoals.map((goal) => (
+              <BudgetCircleCard
+                key={goal.id}
+                name={goal.category}
+                allocated={goal.periodAmount}
+                spent={goal.currentSpending || 0}
+                periodLabel={
+                  goal.periodType === "WEEKLY" ? "Weekly" :
+                  goal.periodType === "BIWEEKLY" ? "Biweekly" :
+                  goal.periodType === "MONTHLY" ? "Monthly" :
+                  "One-time"
+                }
+                color="purple"
+              />
+            ))}
+
+            {/* Savings Goal */}
+            {savingsGoal > 0 && (
+              <BudgetCircleCard
+                name="Savings"
+                allocated={savingsGoal}
+                spent={savingsGoal}
+                periodLabel="Monthly"
+                color="emerald"
+                isFixedExpense
+              />
+            )}
+
+            {/* Discretionary */}
+            {remainingDiscretionary > 0 && (
+              <BudgetCircleCard
+                name="Discretionary"
+                allocated={remainingDiscretionary}
+                spent={totalSpent - budgetGoals.reduce((sum, g) => sum + (g.currentSpending || 0), 0)}
+                periodLabel="Monthly"
+                color="orange"
+              />
+            )}
+          </div>
         </div>
       )}
 

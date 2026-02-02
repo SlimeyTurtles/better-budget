@@ -33,6 +33,7 @@ services:
       - PLAID_SECRET=${PLAID_SECRET}
       - PLAID_ENV=${PLAID_ENV:-sandbox}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - TZ=${TZ:-America/Los_Angeles}
     depends_on:
       db:
         condition: service_healthy

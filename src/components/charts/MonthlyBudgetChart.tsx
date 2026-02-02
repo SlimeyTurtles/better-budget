@@ -20,6 +20,7 @@ interface TrendlineDataPoint {
   income: number;
   rent: number;
   savings: number;
+  commitments: number;
   actual: number | null;
 }
 
@@ -123,6 +124,7 @@ export function MonthlyBudgetChart({
               income: "Income Goal",
               rent: "Rent + Utilities",
               savings: "Rent + Utilities + Savings",
+              commitments: "Total Commitments (incl. Goals)",
               actual: "Actual Balance",
               projected: "Projected (No Spending)",
             };
@@ -141,6 +143,7 @@ export function MonthlyBudgetChart({
               income: "Income Goal",
               rent: "Rent + Utilities",
               savings: "Rent + Utilities + Savings",
+              commitments: "Total Commitments (incl. Goals)",
               actual: "Actual Balance",
               projected: "Projected (No Spending)",
             };
@@ -191,6 +194,17 @@ export function MonthlyBudgetChart({
           dataKey="savings"
           name="savings"
           stroke="#3b82f6"
+          strokeWidth={2}
+          dot={false}
+          connectNulls={true}
+        />
+
+        {/* Total Commitments trendline (cyan) - includes savings goal commitments */}
+        <Line
+          type="linear"
+          dataKey="commitments"
+          name="commitments"
+          stroke="#06b6d4"
           strokeWidth={2}
           dot={false}
           connectNulls={true}

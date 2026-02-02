@@ -43,14 +43,16 @@ const COMMON_CATEGORIES = [
   "Entertainment",
   "Shopping",
   "Transportation",
-  "Utilities",
+  "Gas",
   "Subscriptions",
   "Health & Fitness",
   "Personal Care",
   "Gifts",
   "Travel",
   "Education",
-  "Other",
+  "Clothing",
+  "Home & Garden",
+  "Pets",
 ];
 
 const PERIOD_TYPES: { value: BudgetPeriodType; label: string }[] = [
@@ -73,7 +75,6 @@ const WEEK_DAYS = [
 export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetModalProps) {
   const [type, setType] = useState<BudgetType>("spending");
   const [category, setCategory] = useState("");
-  const [customCategory, setCustomCategory] = useState("");
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [currentAmount, setCurrentAmount] = useState("");
@@ -91,9 +92,7 @@ export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetMo
       if (editingBudget) {
         setType(editingBudget.type);
         if (editingBudget.type === "spending") {
-          const isCommon = COMMON_CATEGORIES.includes(editingBudget.category || "");
-          setCategory(isCommon ? editingBudget.category || "" : "Other");
-          setCustomCategory(isCommon ? "" : editingBudget.category || "");
+          setCategory(editingBudget.category || "");
           setAmount(editingBudget.periodAmount?.toString() || "");
           setPeriodType(editingBudget.periodType || "MONTHLY");
           setStartDate(editingBudget.startDate || "");
@@ -108,7 +107,6 @@ export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetMo
       } else {
         setType("spending");
         setCategory("");
-        setCustomCategory("");
         setName("");
         setAmount("");
         setCurrentAmount("");
@@ -133,9 +131,8 @@ export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetMo
     }
 
     if (type === "spending") {
-      const finalCategory = category === "Other" ? customCategory : category;
-      if (!finalCategory.trim()) {
-        setError("Please select or enter a category");
+      if (!category.trim()) {
+        setError("Please enter a category name");
         return;
       }
 
@@ -155,7 +152,7 @@ export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetMo
       try {
         await onSave({
           type: "spending",
-          category: finalCategory.trim(),
+          category: category.trim(),
           periodType,
           periodAmount: numAmount,
           ...(periodType === "CUSTOM" && { startDate, endDate }),
@@ -266,34 +263,23 @@ export function BudgetModal({ isOpen, onClose, onSave, editingBudget }: BudgetMo
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Category
                 </label>
-                <select
+                <input
+                  type="text"
+                  list="category-suggestions"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-blue-500"
-                >
-                  <option value="">Select a category</option>
+                  placeholder="e.g., Groceries, Dining Out, Shopping..."
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-blue-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                />
+                <datalist id="category-suggestions">
                   {COMMON_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
+                    <option key={cat} value={cat} />
                   ))}
-                </select>
+                </datalist>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Type a category name or select from suggestions
+                </p>
               </div>
-
-              {category === "Other" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Custom Category
-                  </label>
-                  <input
-                    type="text"
-                    value={customCategory}
-                    onChange={(e) => setCustomCategory(e.target.value)}
-                    placeholder="Enter category name"
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-              )}
 
               {/* Period Type */}
               <div>

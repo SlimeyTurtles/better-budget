@@ -182,6 +182,8 @@ export async function GET() {
       goals,
       summary: {
         totalMonthlyIncome: monthlyIncome,
+        rentAmount: Math.round(rentAmount * 100) / 100,
+        utilitiesAmount: Math.round(utilitiesAmount * 100) / 100,
         fixedExpenses: Math.round(fixedExpenses * 100) / 100,
         totalBudgetAllocations: Math.round(totalBudgetAllocations * 100) / 100,
         savingsGoal: Math.round(monthlySavingsGoal * 100) / 100,

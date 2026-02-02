@@ -29,8 +29,46 @@ export async function GET(request: Request) {
         rentAmount: 0,
         utilitiesAmount: 0,
         savingsGoal: 0,
+        savingsCommitments: 0,
         availableToday: 0,
       });
+    }
+
+    // Get savings goals with target dates (these require monthly allocations)
+    const today = new Date();
+    const savingsGoals = await prisma.savingsGoal.findMany({
+      where: {
+        userId: session.user.id,
+        isComplete: false,
+        targetDate: {
+          gt: today, // Only goals with future deadlines
+        },
+      },
+    });
+
+    // Calculate total monthly commitment for savings goals
+    let totalMonthlySavingsCommitment = 0;
+    const todayStart = startOfDay(today);
+
+    for (const goal of savingsGoals) {
+      if (goal.targetDate) {
+        const targetAmount = Number(goal.targetAmount);
+        const currentAmount = Number(goal.currentAmount);
+        const remaining = Math.max(0, targetAmount - currentAmount);
+
+        if (remaining > 0) {
+          const targetDate = new Date(goal.targetDate);
+          const diffTime = targetDate.getTime() - todayStart.getTime();
+          const daysUntilDeadline = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (daysUntilDeadline > 0) {
+            // Daily contribution needed * 30.44 (avg days in month)
+            const dailyContribution = remaining / daysUntilDeadline;
+            const monthlyContribution = dailyContribution * 30.44;
+            totalMonthlySavingsCommitment += monthlyContribution;
+          }
+        }
+      }
     }
 
     const monthlyIncome = Number(incomeConfig.projectedMonthlyIncome || 0);
@@ -47,8 +85,8 @@ export async function GET(request: Request) {
     // Fixed costs (rent + utilities)
     const fixedCosts = rentAmount + utilitiesAmount;
 
-    const today = new Date();
-    const todayStart = startOfDay(today);
+    // Total savings commitments (monthly amount needed for savings goals with deadlines)
+    const savingsCommitments = Math.round(totalMonthlySavingsCommitment * 100) / 100;
 
     // Determine time period boundaries and units
     let periodStart: Date;
@@ -61,6 +99,7 @@ export async function GET(request: Request) {
     let periodIncome: number;
     let periodFixedCosts: number;
     let periodSavingsGoal: number;
+    let periodCommitments: number;
 
     switch (period) {
       case "daily": {
@@ -76,6 +115,7 @@ export async function GET(request: Request) {
         periodIncome = monthlyIncome / daysInMonth;
         periodFixedCosts = fixedCosts / daysInMonth;
         periodSavingsGoal = savingsGoal / daysInMonth;
+        periodCommitments = savingsCommitments / daysInMonth;
         break;
       }
       case "weekly": {
@@ -93,6 +133,7 @@ export async function GET(request: Request) {
         periodIncome = monthlyIncome / 4.33;
         periodFixedCosts = fixedCosts / 4.33;
         periodSavingsGoal = savingsGoal / 4.33;
+        periodCommitments = savingsCommitments / 4.33;
         break;
       }
       case "biweekly": {
@@ -115,6 +156,7 @@ export async function GET(request: Request) {
         periodIncome = monthlyIncome / 2;
         periodFixedCosts = fixedCosts / 2;
         periodSavingsGoal = savingsGoal / 2;
+        periodCommitments = savingsCommitments / 2;
         break;
       }
       case "monthly":
@@ -129,6 +171,7 @@ export async function GET(request: Request) {
         periodIncome = monthlyIncome;
         periodFixedCosts = fixedCosts;
         periodSavingsGoal = savingsGoal;
+        periodCommitments = savingsCommitments;
         break;
       }
     }
@@ -156,6 +199,7 @@ export async function GET(request: Request) {
       income: number;
       rent: number;
       savings: number;
+      commitments: number;
       actual: number | null;
     }
 
@@ -165,9 +209,11 @@ export async function GET(request: Request) {
     // Income line: goes from 0 to full period income
     // Rent line: goes from 0 to fixed costs (rent + utilities) - this is what you need to set aside
     // Savings line: goes from 0 to fixed costs + savings goal - total you need to set aside
+    // Commitments line: goes from 0 to fixed costs + savings goal + savings goal commitments
     const incomeTarget = periodIncome;
     const rentTarget = periodFixedCosts;
     const savingsTarget = periodFixedCosts + periodSavingsGoal;
+    const commitmentsTarget = periodFixedCosts + periodSavingsGoal + periodCommitments;
 
     // Group transactions by unit (separate income and expenses)
     // Extra income = income transactions that are NOT salary (salary is already in projected income)
@@ -208,6 +254,7 @@ export async function GET(request: Request) {
       const incomeValue = incomeTarget * progress;
       const rentValue = rentTarget * progress;
       const savingsValue = savingsTarget * progress;
+      const commitmentsValue = commitmentsTarget * progress;
 
       // Generate label
       let label: string;
@@ -255,6 +302,7 @@ export async function GET(request: Request) {
         income: Math.round(incomeValue * 100) / 100,
         rent: Math.round(rentValue * 100) / 100,
         savings: Math.round(savingsValue * 100) / 100,
+        commitments: Math.round(commitmentsValue * 100) / 100,
         actual: actualValue !== null ? Math.round(actualValue * 100) / 100 : null,
       });
     }
@@ -273,8 +321,8 @@ export async function GET(request: Request) {
     // 3. Projected balance at end of period (if no more spending)
     const projectedEndBalance = currentActualBalance + remainingIncome;
 
-    // 4. Available to spend = projected end balance - savings target (rent + utilities + savings)
-    const availableToSpendTotal = projectedEndBalance - savingsTarget;
+    // 4. Available to spend = projected end balance - commitments target (rent + utilities + savings + goal commitments)
+    const availableToSpendTotal = projectedEndBalance - commitmentsTarget;
 
     // 5. Available per day = total available / remaining days (including today)
     const remainingDaysIncludingToday = Math.max(1, remainingUnits + 1);
@@ -313,6 +361,7 @@ export async function GET(request: Request) {
       rentAmount,
       utilitiesAmount,
       savingsGoal,
+      savingsCommitments,
       availableToday: Math.round(availableToday * 100) / 100,
       availablePerDay: Math.round(availablePerDay * 100) / 100,
       availableToSpendTotal: Math.round(availableToSpendTotal * 100) / 100,
@@ -323,6 +372,7 @@ export async function GET(request: Request) {
         income: incomeTarget,
         rent: rentTarget,
         savings: savingsTarget,
+        commitments: commitmentsTarget,
       },
     });
   } catch (error) {

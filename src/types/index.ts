@@ -121,6 +121,8 @@ export interface EnhancedBudgetGoal extends BudgetGoal {
 
 export interface BudgetSummary {
   totalMonthlyIncome: number;
+  rentAmount: number;
+  utilitiesAmount: number;
   fixedExpenses: number;
   totalBudgetAllocations: number;
   savingsGoal: number;
