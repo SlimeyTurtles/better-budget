@@ -11,6 +11,13 @@ interface Transaction {
   isIncome: boolean;
 }
 
+interface BudgetGoal {
+  id: string;
+  category: string;
+  periodAmount: number;
+  isActive: boolean;
+}
+
 interface EditTransactionModalProps {
   transaction: Transaction | null;
   isOpen: boolean;
@@ -19,20 +26,24 @@ interface EditTransactionModalProps {
   onDelete: (id: string) => void;
 }
 
-const COMMON_CATEGORIES = [
+// Fallback categories if no budget goals exist
+const FALLBACK_EXPENSE_CATEGORIES = [
   "Food & Dining",
   "Groceries",
   "Transportation",
   "Shopping",
   "Entertainment",
   "Bills & Utilities",
-  "Health & Medical",
-  "Travel",
-  "Education",
-  "Personal Care",
-  "Income",
-  "Salary",
   "Other",
+];
+
+const INCOME_CATEGORIES = [
+  "Salary",
+  "Bonus",
+  "Freelance",
+  "Investment",
+  "Refund",
+  "Other Income",
 ];
 
 export function EditTransactionModal({
@@ -46,6 +57,7 @@ export function EditTransactionModal({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState("");
+  const [budgetGoals, setBudgetGoals] = useState<BudgetGoal[]>([]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -66,8 +78,40 @@ export function EditTransactionModal({
       });
       setShowDeleteConfirm(false);
       setError("");
+      fetchBudgetGoals();
     }
   }, [transaction, isOpen]);
+
+  async function fetchBudgetGoals() {
+    try {
+      const response = await fetch("/api/budget-goals");
+      if (response.ok) {
+        const data = await response.json();
+        setBudgetGoals(data.goals || []);
+      }
+    } catch (error) {
+      console.error("Error fetching budget goals:", error);
+    }
+  }
+
+  // Get categories based on transaction type
+  const getCategories = () => {
+    if (formData.isIncome) {
+      return INCOME_CATEGORIES;
+    }
+    // For expenses, use budget goals if available, otherwise fallback
+    if (budgetGoals.length > 0) {
+      const budgetCategories = budgetGoals
+        .filter((g) => g.isActive)
+        .map((g) => g.category);
+      // Add "Other" if not already in budget categories
+      if (!budgetCategories.includes("Other")) {
+        budgetCategories.push("Other");
+      }
+      return budgetCategories;
+    }
+    return FALLBACK_EXPENSE_CATEGORIES;
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -249,7 +293,11 @@ export function EditTransactionModal({
           {/* Category */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Category
+              Category {!formData.isIncome && budgetGoals.length > 0 && (
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal ml-1">
+                  (from your budgets)
+                </span>
+              )}
             </label>
             <select
               value={formData.category}
@@ -259,11 +307,17 @@ export function EditTransactionModal({
               className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">No category</option>
-              {COMMON_CATEGORIES.map((cat) => (
+              {getCategories().map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>
               ))}
+              {/* Show current category if it's not in the list (e.g., from Plaid) */}
+              {formData.category && !getCategories().includes(formData.category) && (
+                <option value={formData.category}>
+                  {formData.category} (original)
+                </option>
+              )}
             </select>
           </div>
 
