@@ -1,0 +1,238 @@
+"use client";
+
+import {
+  ComposedChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+  Legend,
+} from "recharts";
+import { formatCurrency } from "@/lib/utils";
+
+interface TrendlineDataPoint {
+  date: string;
+  unit: number;
+  label: string;
+  income: number;
+  rent: number;
+  savings: number;
+  commitments: number;
+  actual: number | null;
+}
+
+type TimePeriod = "daily" | "weekly" | "biweekly" | "monthly";
+
+interface MonthlyBudgetChartProps {
+  data: TrendlineDataPoint[];
+  currentUnit: number;
+  period: TimePeriod;
+  incomePerUnit: number;
+  height?: number;
+}
+
+export function MonthlyBudgetChart({
+  data,
+  currentUnit,
+  period,
+  incomePerUnit,
+  height = 400,
+}: MonthlyBudgetChartProps) {
+  if (data.length === 0) {
+    return (
+      <div
+        className="flex items-center justify-center text-gray-500"
+        style={{ height }}
+      >
+        No budget data available
+      </div>
+    );
+  }
+
+  // Get current actual balance
+  const currentActual = data.find((d) => d.unit === currentUnit)?.actual ?? 0;
+
+  // Add projected values to data (starting from current unit)
+  const chartData = data.map((point) => {
+    let projected: number | null = null;
+
+    if (point.unit >= currentUnit && currentActual !== null) {
+      const unitsFromCurrent = point.unit - currentUnit;
+      projected = currentActual + (incomePerUnit * unitsFromCurrent);
+    }
+
+    return {
+      ...point,
+      projected,
+    };
+  });
+
+  // Get x-axis label based on period
+  const getXAxisLabel = () => {
+    switch (period) {
+      case "daily":
+        return "Hour";
+      case "weekly":
+      case "biweekly":
+      case "monthly":
+      default:
+        return "Day";
+    }
+  };
+
+  // Get "now" label based on period
+  const getNowLabel = () => {
+    switch (period) {
+      case "daily":
+        return "Now";
+      case "weekly":
+      case "biweekly":
+      case "monthly":
+      default:
+        return "Today";
+    }
+  };
+
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <XAxis
+          dataKey="label"
+          tick={{ fontSize: 12, fill: "#6b7280" }}
+          axisLine={{ stroke: "#e5e7eb" }}
+          interval={period === "daily" ? 3 : period === "biweekly" ? 1 : "preserveStartEnd"}
+          label={{ value: getXAxisLabel(), position: "bottom", offset: -5, fontSize: 12, fill: "#6b7280" }}
+        />
+        <YAxis
+          tickFormatter={(value) => {
+            if (Math.abs(value) >= 1000) {
+              return `$${(value / 1000).toFixed(1)}k`;
+            }
+            return `$${value}`;
+          }}
+          tick={{ fontSize: 12, fill: "#6b7280" }}
+          axisLine={{ stroke: "#e5e7eb" }}
+        />
+        <Tooltip
+          formatter={(value, name) => {
+            if (value === null || value === undefined) return ["-", name];
+            const labels: Record<string, string> = {
+              income: "Income Goal",
+              rent: "Rent + Utilities",
+              savings: "Rent + Utilities + Savings",
+              commitments: "Total Commitments (incl. Goals)",
+              actual: "Actual Balance",
+              projected: "Projected (No Spending)",
+            };
+            return [formatCurrency(Number(value)), labels[name as string] || name];
+          }}
+          labelFormatter={(label) => `${getXAxisLabel()}: ${label}`}
+          contentStyle={{
+            backgroundColor: "white",
+            border: "1px solid #e5e7eb",
+            borderRadius: "8px",
+          }}
+        />
+        <Legend
+          formatter={(value) => {
+            const labels: Record<string, string> = {
+              income: "Income Goal",
+              rent: "Rent + Utilities",
+              savings: "Rent + Utilities + Savings",
+              commitments: "Total Commitments (incl. Goals)",
+              actual: "Actual Balance",
+              projected: "Projected (No Spending)",
+            };
+            return labels[value] || value;
+          }}
+        />
+        <ReferenceLine y={0} stroke="#9ca3af" strokeDasharray="3 3" />
+
+        {/* Current position marker */}
+        <ReferenceLine
+          x={data.find((d) => d.unit === currentUnit)?.label}
+          stroke="#f59e0b"
+          strokeWidth={2}
+          strokeDasharray="5 5"
+          label={{
+            value: getNowLabel(),
+            position: "top",
+            fill: "#f59e0b",
+            fontSize: 12,
+          }}
+        />
+
+        {/* Income trendline (purple) - total income goal */}
+        <Line
+          type="linear"
+          dataKey="income"
+          name="income"
+          stroke="#8b5cf6"
+          strokeWidth={2}
+          dot={false}
+          connectNulls={true}
+        />
+
+        {/* Rent + Utilities trendline (red) */}
+        <Line
+          type="linear"
+          dataKey="rent"
+          name="rent"
+          stroke="#ef4444"
+          strokeWidth={2}
+          dot={false}
+          connectNulls={true}
+        />
+
+        {/* Rent + Utilities + Savings trendline (blue) */}
+        <Line
+          type="linear"
+          dataKey="savings"
+          name="savings"
+          stroke="#3b82f6"
+          strokeWidth={2}
+          dot={false}
+          connectNulls={true}
+        />
+
+        {/* Total Commitments trendline (cyan) - includes savings goal commitments */}
+        <Line
+          type="linear"
+          dataKey="commitments"
+          name="commitments"
+          stroke="#06b6d4"
+          strokeWidth={2}
+          dot={false}
+          connectNulls={true}
+        />
+
+        {/* Actual balance line (green) */}
+        <Line
+          type="monotone"
+          dataKey="actual"
+          name="actual"
+          stroke="#22c55e"
+          strokeWidth={3}
+          dot={false}
+          connectNulls={false}
+        />
+
+        {/* Projected balance line (green dotted) - shows if no spending */}
+        <Line
+          type="linear"
+          dataKey="projected"
+          name="projected"
+          stroke="#22c55e"
+          strokeWidth={2}
+          strokeDasharray="5 5"
+          dot={false}
+          connectNulls={true}
+        />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
