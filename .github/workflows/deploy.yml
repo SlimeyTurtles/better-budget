@@ -19,5 +19,14 @@ jobs:
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             cd ${{ secrets.PROJECT_PATH }}
-            git pull origin production
-            docker compose up --build -d
+            echo "=== Current git status ==="
+            git status
+            echo "=== Pulling latest changes ==="
+            git fetch origin production
+            git reset --hard origin/production
+            echo "=== Latest commit ==="
+            git log -1 --oneline
+            echo "=== Rebuilding containers (no cache) ==="
+            docker compose build --no-cache
+            docker compose up -d
+            echo "=== Deploy complete ==="
