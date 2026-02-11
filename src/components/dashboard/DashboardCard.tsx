@@ -36,7 +36,7 @@ export function DashboardCard({ type, data, onUpdate }: DashboardCardProps) {
       return <BudgetRemainingCard data={data as { category: string; periodType: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM"; periodAmount: number; currentSpending: number; remaining: number; percentUsed: number; daysRemainingInPeriod?: number; dailyAllowance?: number }} />;
 
     case "BUDGET_TOTAL_REMAINING":
-      return <BudgetTotalRemainingCard data={data as { totalMonthlyIncome: number; totalBudgetAllocations: number; remainingDiscretionary: number; dailyDiscretionary: number; totalCurrentSpending: number; percentUsed: number; isOverAllocated: boolean }} />;
+      return <BudgetTotalRemainingCard data={data as { totalMonthlyIncome: number; totalBudgetAllocations: number; remainingDiscretionary: number; dailyDiscretionary: number; daysRemaining: number; totalCurrentSpending: number; percentUsed: number; isOverAllocated: boolean }} />;
 
     case "SAVINGS_PROGRESS":
       return <SavingsProgressCard data={data as { name: string; targetAmount: number; currentAmount: number; progressPercent: number; targetDate?: string | null; daysUntilDeadline?: number | null; daysUntilGoal?: number | null; contributionNeeded?: number | null; monthlyContributionNeeded?: number | null; isOnTrack?: boolean }} />;

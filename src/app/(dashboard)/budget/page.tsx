@@ -291,31 +291,31 @@ export default function BudgetPage() {
               : "bg-gradient-to-r from-green-500 to-green-600"
           }`}
         >
-          <div className="flex flex-wrap items-start justify-between gap-6">
+          <h3 className="text-lg font-semibold">
+            {isOverAllocated ? "Over-Allocated" : "Remaining Discretionary"}
+          </h3>
+          <p className="text-sm opacity-80 mt-1">
+            {isOverAllocated
+              ? "Your allocations exceed your income"
+              : "After fixed expenses, budget allocations, and savings goal"}
+          </p>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
             <div>
-              <p className="text-sm font-medium opacity-90">
-                {isOverAllocated ? "Over-Allocated" : "Remaining Discretionary"}
-              </p>
-              <p className="text-3xl font-bold mt-1">{formatCurrency(remainingDiscretionary)}</p>
-              <p className="text-sm opacity-80 mt-2">
-                {isOverAllocated
-                  ? "Your allocations exceed your income"
-                  : `Left to spend freely this month • ${daysRemaining} days remaining`}
-              </p>
+              <p className="opacity-80">Total Remaining</p>
+              <p className="text-3xl font-bold">{formatCurrency(Math.abs(remainingDiscretionary))}</p>
             </div>
-            <div className="flex gap-8">
-              <div className="text-center">
-                <p className="text-2xl font-bold">{formatCurrency(dailyDiscretionary)}</p>
-                <p className="text-sm opacity-80 mt-1">Daily allowance</p>
-                <p className="text-xs opacity-60">You can spend this each day</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold">{formatCurrency(dailyDiscretionary * 7)}</p>
-                <p className="text-sm opacity-80 mt-1">Weekly allowance</p>
-                <p className="text-xs opacity-60">You can spend this each week</p>
-              </div>
+            <div>
+              <p className="opacity-80">Daily Allowance</p>
+              <p className="text-3xl font-bold">{formatCurrency(Math.abs(dailyDiscretionary))}</p>
+            </div>
+            <div>
+              <p className="opacity-80">Weekly Allowance</p>
+              <p className="text-3xl font-bold">{formatCurrency(Math.abs(dailyDiscretionary * 7))}</p>
             </div>
           </div>
+          <p className="mt-4 text-sm opacity-80">
+            Based on {daysRemaining} days remaining this month
+          </p>
         </div>
       )}
 
