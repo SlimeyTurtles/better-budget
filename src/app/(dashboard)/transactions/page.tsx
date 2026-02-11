@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { AddTransactionModal } from "@/components/transactions/AddTransactionModal";
 import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";
@@ -30,21 +30,32 @@ interface Transaction {
   };
 }
 
+function getStartOfMonth(): string {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+}
+
+function getMonthName(): string {
+  return new Date().toLocaleString("default", { month: "long" });
+}
+
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
+  const [showAllTime, setShowAllTime] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
-  async function fetchTransactions() {
+  const fetchTransactions = useCallback(async () => {
     try {
-      const response = await fetch("/api/transactions?limit=100");
+      setIsLoading(true);
+      const params = new URLSearchParams({ limit: "500" });
+      if (!showAllTime) {
+        params.set("startDate", getStartOfMonth());
+      }
+      const response = await fetch(`/api/transactions?${params.toString()}`);
       const data = await response.json();
       setTransactions(data.transactions || []);
       setTotal(data.total || 0);
@@ -53,7 +64,11 @@ export default function TransactionsPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [showAllTime]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
 
   const filteredTransactions = transactions.filter((t) => {
     if (filter === "income") return t.isIncome;
@@ -92,30 +107,52 @@ export default function TransactionsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+            {showAllTime ? "All Transactions" : `${getMonthName()} Transactions`}
+          </h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            View and manage your transaction history
+            {showAllTime
+              ? "Viewing all transaction history"
+              : `Showing transactions from ${getMonthName()} ${new Date().getFullYear()}`}
           </p>
         </div>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 w-full sm:w-auto"
-        >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => setShowAllTime(!showAllTime)}
+            className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex-1 sm:flex-initial"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          Add Transaction
-        </button>
+            {showAllTime ? (
+              <>
+                <CalendarIcon />
+                This Month
+              </>
+            ) : (
+              <>
+                <HistoryIcon />
+                View All
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 flex-1 sm:flex-initial"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Add Transaction
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -293,6 +330,22 @@ function EditIcon() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  );
+}
+
+function HistoryIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
 }

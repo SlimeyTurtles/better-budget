@@ -34,11 +34,17 @@ export function TagInput({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Filter available tags based on input and exclude already selected
-  const filteredTags = availableTags.filter(
-    (tag) =>
-      tag.name.toLowerCase().includes(inputValue.toLowerCase()) &&
-      !selectedTags.some((st) => st.id === tag.id)
-  );
+  // Sort so non-system tags appear first, then system tags
+  const filteredTags = availableTags
+    .filter(
+      (tag) =>
+        tag.name.toLowerCase().includes(inputValue.toLowerCase()) &&
+        !selectedTags.some((st) => st.id === tag.id)
+    )
+    .sort((a, b) => {
+      if (a.isSystem === b.isSystem) return a.name.localeCompare(b.name);
+      return a.isSystem ? 1 : -1;
+    });
 
   // Check if input matches an exact existing tag name
   const exactMatch = availableTags.find(
@@ -149,23 +155,49 @@ export function TagInput({
               {isCreating ? "Creating..." : `Create "${inputValue}"`}
             </button>
           )}
-          {filteredTags.map((tag) => (
-            <button
-              key={tag.id}
-              type="button"
-              onClick={() => handleSelectTag(tag)}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-            >
-              <span
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: tag.color || "#6B7280" }}
-              />
-              <span className="text-gray-900 dark:text-white">{tag.name}</span>
-              {tag.isSystem && (
-                <span className="text-xs text-gray-400 dark:text-gray-500">(system)</span>
-              )}
-            </button>
-          ))}
+          {(() => {
+            const userTags = filteredTags.filter((t) => !t.isSystem);
+            const systemTags = filteredTags.filter((t) => t.isSystem);
+            return (
+              <>
+                {userTags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => handleSelectTag(tag)}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: tag.color || "#6B7280" }}
+                    />
+                    <span className="text-gray-900 dark:text-white">{tag.name}</span>
+                  </button>
+                ))}
+                {userTags.length > 0 && systemTags.length > 0 && (
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-1">
+                    <p className="px-3 py-1 text-xs text-gray-400 dark:text-gray-500 font-medium">
+                      Categories
+                    </p>
+                  </div>
+                )}
+                {systemTags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => handleSelectTag(tag)}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: tag.color || "#6B7280" }}
+                    />
+                    <span className="text-gray-900 dark:text-white">{tag.name}</span>
+                  </button>
+                ))}
+              </>
+            );
+          })()}
         </div>
       )}
     </div>
