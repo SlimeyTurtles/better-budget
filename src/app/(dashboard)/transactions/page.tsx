@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { AddTransactionModal } from "@/components/transactions/AddTransactionModal";
 import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";
+import { TagBadge } from "@/components/ui/TagBadge";
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string | null;
+  isSystem?: boolean;
+}
 
 interface Transaction {
   id: string;
@@ -15,6 +23,7 @@ interface Transaction {
   isIncome: boolean;
   isPending: boolean;
   isManual: boolean;
+  tags: Tag[];
   bankAccount: {
     name: string;
     mask: string | null;
@@ -207,8 +216,14 @@ export default function TransactionsPage() {
                       </p>
                       <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
                         {formatDate(transaction.date)} • {transaction.bankAccount.name}
-                        {transaction.category && ` • ${transaction.category}`}
                       </p>
+                      {transaction.tags && transaction.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {transaction.tags.map((tag) => (
+                            <TagBadge key={tag.id} tag={tag} size="sm" />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">

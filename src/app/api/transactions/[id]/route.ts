@@ -3,12 +3,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { randomUUID } from "crypto";
 
 const updateTransactionSchema = z.object({
   amount: z.number().positive("Amount must be positive").optional(),
   name: z.string().min(1, "Name is required").optional(),
   date: z.string().transform((str) => new Date(str)).optional(),
   category: z.string().nullable().optional(),
+  tagIds: z.array(z.string()).optional(),
   isIncome: z.boolean().optional(),
 });
 
@@ -48,6 +50,39 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateTransactionSchema.parse(body);
 
+    // If tagIds provided, verify they belong to the user
+    if (validatedData.tagIds !== undefined) {
+      if (validatedData.tagIds.length > 0) {
+        const validTags = await prisma.tag.findMany({
+          where: {
+            id: { in: validatedData.tagIds },
+            userId: session.user.id,
+          },
+        });
+        if (validTags.length !== validatedData.tagIds.length) {
+          return NextResponse.json({ error: "Invalid tag IDs" }, { status: 400 });
+        }
+      }
+
+      // Update tags: delete existing and create new ones
+      await prisma.$transaction([
+        prisma.transactionTag.deleteMany({
+          where: { transactionId: id },
+        }),
+        ...(validatedData.tagIds.length > 0
+          ? [
+              prisma.transactionTag.createMany({
+                data: validatedData.tagIds.map((tagId) => ({
+                  id: randomUUID(),
+                  transactionId: id,
+                  tagId,
+                })),
+              }),
+            ]
+          : []),
+      ]);
+    }
+
     const transaction = await prisma.transaction.update({
       where: { id },
       data: {
@@ -64,6 +99,11 @@ export async function PUT(
             mask: true,
           },
         },
+        tags: {
+          include: {
+            Tag: true,
+          },
+        },
       },
     });
 
@@ -72,6 +112,12 @@ export async function PUT(
       ...transaction,
       bankAccount: transaction.BankAccount,
       BankAccount: undefined,
+      tags: transaction.tags.map((tt) => ({
+        id: tt.Tag.id,
+        name: tt.Tag.name,
+        color: tt.Tag.color,
+        isSystem: tt.Tag.isSystem,
+      })),
     };
 
     return NextResponse.json({ transaction: transformedTransaction });

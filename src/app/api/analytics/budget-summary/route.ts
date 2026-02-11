@@ -26,6 +26,7 @@ export async function GET() {
         userId: session.user.id,
         isActive: true,
       },
+      include: { Tag: true },
       orderBy: { category: "asc" },
     });
 
@@ -70,6 +71,13 @@ export async function GET() {
             return {
               id: goal.id,
               category: goal.category,
+              tagId: goal.tagId,
+              tag: goal.Tag ? {
+                id: goal.Tag.id,
+                name: goal.Tag.name,
+                color: goal.Tag.color,
+                isSystem: goal.Tag.isSystem,
+              } : null,
               periodType,
               periodAmount,
               startDate: goal.startDate?.toISOString().split("T")[0] ?? null,
@@ -89,20 +97,32 @@ export async function GET() {
           }
         }
 
-        // Get transactions for this category within the budget's period
-        const transactions = await prisma.transaction.findMany({
-          where: {
-            userId: session.user.id,
-            date: {
-              gte: periodBounds.start,
-              lte: periodBounds.end,
-            },
-            isIncome: false,
-            OR: [
-              { category: goal.category },
-              { personalCategory: goal.category },
-            ],
+        // Get transactions for this budget goal's tag within the budget's period
+        // Support both tagId (new) and category (legacy) matching
+        const transactionWhere: Record<string, unknown> = {
+          userId: session.user.id,
+          date: {
+            gte: periodBounds.start,
+            lte: periodBounds.end,
           },
+          isIncome: false,
+        };
+
+        if (goal.tagId) {
+          // Use tag-based matching (preferred)
+          transactionWhere.tags = {
+            some: { tagId: goal.tagId },
+          };
+        } else if (goal.category) {
+          // Fallback to category matching (legacy)
+          transactionWhere.OR = [
+            { category: goal.category },
+            { personalCategory: goal.category },
+          ];
+        }
+
+        const transactions = await prisma.transaction.findMany({
+          where: transactionWhere,
           select: {
             amount: true,
           },
@@ -132,6 +152,13 @@ export async function GET() {
         return {
           id: goal.id,
           category: goal.category,
+          tagId: goal.tagId,
+          tag: goal.Tag ? {
+            id: goal.Tag.id,
+            name: goal.Tag.name,
+            color: goal.Tag.color,
+            isSystem: goal.Tag.isSystem,
+          } : null,
           periodType,
           periodAmount,
           startDate: goal.startDate?.toISOString().split("T")[0] ?? null,

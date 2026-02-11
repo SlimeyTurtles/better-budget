@@ -56,10 +56,33 @@ export async function POST(request: Request) {
           );
           if (!bankAccount) continue;
 
-          await prisma.transaction.upsert({
+          const transactionId = randomUUID();
+          const plaidCategory = transaction.personal_finance_category?.primary;
+
+          // Find or create tag for the Plaid category
+          let tag = null;
+          if (plaidCategory) {
+            tag = await prisma.tag.upsert({
+              where: {
+                userId_name: {
+                  userId: session.user.id,
+                  name: plaidCategory,
+                },
+              },
+              create: {
+                id: randomUUID(),
+                userId: session.user.id,
+                name: plaidCategory,
+                isSystem: true,
+              },
+              update: {},
+            });
+          }
+
+          const upsertedTransaction = await prisma.transaction.upsert({
             where: { plaidTransactionId: transaction.transaction_id },
             create: {
-              id: randomUUID(),
+              id: transactionId,
               userId: session.user.id,
               bankAccountId: bankAccount.id,
               plaidTransactionId: transaction.transaction_id,
@@ -71,7 +94,7 @@ export async function POST(request: Request) {
                 : null,
               name: transaction.name,
               merchantName: transaction.merchant_name,
-              category: transaction.personal_finance_category?.primary,
+              category: plaidCategory,
               isPending: transaction.pending,
               isIncome: transaction.amount < 0,
               paymentChannel: transaction.payment_channel,
@@ -92,6 +115,25 @@ export async function POST(request: Request) {
               merchantName: transaction.merchant_name,
             },
           });
+
+          // Link transaction to tag if we have a category
+          if (tag) {
+            await prisma.transactionTag.upsert({
+              where: {
+                transactionId_tagId: {
+                  transactionId: upsertedTransaction.id,
+                  tagId: tag.id,
+                },
+              },
+              create: {
+                id: randomUUID(),
+                transactionId: upsertedTransaction.id,
+                tagId: tag.id,
+              },
+              update: {},
+            });
+          }
+
           totalAdded++;
         }
 
