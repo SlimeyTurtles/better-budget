@@ -8,35 +8,54 @@ interface AvailableTodayCardProps {
 }
 
 export function AvailableTodayCard({ data }: AvailableTodayCardProps) {
-  const isPositive = data.availableToday >= 0;
-  const isTotalPositive = data.availableToSpendTotal >= 0;
-  const colorClass = isPositive
-    ? "bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400"
-    : "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400";
-  const valueColor = isPositive
-    ? "text-green-600 dark:text-green-400"
-    : "text-red-600 dark:text-red-400";
-  const totalColor = isTotalPositive
-    ? "text-green-600 dark:text-green-400"
-    : "text-red-600 dark:text-red-400";
+  const isOverspent = data.availableToday < 0;
+
+  // Calculate what percentage of daily allowance remains
+  const percentUsed = data.availablePerDay > 0
+    ? Math.min(100, Math.round((data.todaySpending / data.availablePerDay) * 100))
+    : 0;
+
+  const getBgColor = () => {
+    if (isOverspent) return "bg-red-500";
+    if (percentUsed >= 80) return "bg-amber-500";
+    return "bg-emerald-500";
+  };
+
+  // Progress bar showing how much of daily budget is used
+  const barWidth = Math.min(percentUsed, 100);
 
   return (
-    <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
-      <div className={`inline-flex rounded-lg p-2 ${colorClass}`}>
-        <span className="text-sm font-medium">Available Today</span>
+    <div className={`rounded-xl p-5 shadow-lg text-white ${getBgColor()} h-full flex flex-col`}>
+      {/* Main message */}
+      <div className="flex-1">
+        <p className="text-sm font-medium opacity-90">
+          {isOverspent ? "You've overspent today by" : "You can spend"}
+        </p>
+        <p className="text-3xl font-bold mt-1">
+          {formatCurrency(Math.abs(data.availableToday))}
+        </p>
+        <p className="text-sm opacity-90 mt-0.5">
+          {isOverspent ? "over your daily budget" : "today"}
+        </p>
       </div>
-      <div className="flex-1 flex flex-col">
-        <p className={`mt-4 text-2xl font-bold ${valueColor}`}>
-          {formatCurrency(data.availableToday)}
-        </p>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          {formatCurrency(data.availablePerDay)}/day - {formatCurrency(data.todaySpending)} spent
-        </p>
-        <div className="mt-auto pt-3 border-t border-gray-100 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400">Available til end of month</p>
-          <p className={`text-lg font-semibold ${totalColor}`}>
-            {formatCurrency(data.availableToSpendTotal)}
-          </p>
+
+      {/* Progress bar */}
+      <div className="mt-4">
+        <div className="flex justify-between text-xs mb-1.5">
+          <span className="opacity-80">
+            {formatCurrency(data.todaySpending)} spent
+          </span>
+          <span className="opacity-80">
+            {formatCurrency(data.availablePerDay)} daily budget
+          </span>
+        </div>
+        <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${
+              isOverspent ? "bg-white" : "bg-white/80"
+            }`}
+            style={{ width: `${barWidth}%` }}
+          />
         </div>
       </div>
     </div>

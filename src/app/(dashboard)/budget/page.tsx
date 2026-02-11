@@ -248,14 +248,6 @@ export default function BudgetPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Budget</h1>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Track your spending against your budget
-        </p>
-      </div>
-
       {/* Budget Overview */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
@@ -299,40 +291,31 @@ export default function BudgetPage() {
               : "bg-gradient-to-r from-green-500 to-green-600"
           }`}
         >
-          <h3 className="text-lg font-semibold">
-            {isOverAllocated ? "Over-Allocated Budget" : "Remaining Discretionary"}
-          </h3>
-          <p className="text-sm opacity-80 mt-1">
-            After fixed expenses, budget allocations, and savings goal
-          </p>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div className="flex flex-wrap items-start justify-between gap-6">
             <div>
-              <p className="opacity-80">Total Remaining</p>
-              <p className="text-3xl font-bold">
-                {formatCurrency(remainingDiscretionary)}
+              <p className="text-sm font-medium opacity-90">
+                {isOverAllocated ? "Over-Allocated" : "Remaining Discretionary"}
+              </p>
+              <p className="text-3xl font-bold mt-1">{formatCurrency(remainingDiscretionary)}</p>
+              <p className="text-sm opacity-80 mt-2">
+                {isOverAllocated
+                  ? "Your allocations exceed your income"
+                  : `Left to spend freely this month • ${daysRemaining} days remaining`}
               </p>
             </div>
-            <div>
-              <p className="opacity-80">Daily Allowance</p>
-              <p className="text-3xl font-bold">
-                {formatCurrency(dailyDiscretionary)}
-              </p>
-            </div>
-            <div>
-              <p className="opacity-80">Weekly Allowance</p>
-              <p className="text-3xl font-bold">
-                {formatCurrency(dailyDiscretionary * 7)}
-              </p>
+            <div className="flex gap-8">
+              <div className="text-center">
+                <p className="text-2xl font-bold">{formatCurrency(dailyDiscretionary)}</p>
+                <p className="text-sm opacity-80 mt-1">Daily allowance</p>
+                <p className="text-xs opacity-60">You can spend this each day</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold">{formatCurrency(dailyDiscretionary * 7)}</p>
+                <p className="text-sm opacity-80 mt-1">Weekly allowance</p>
+                <p className="text-xs opacity-60">You can spend this each week</p>
+              </div>
             </div>
           </div>
-          <p className="mt-4 text-sm opacity-80">
-            Based on {daysRemaining} days remaining this month
-          </p>
-          {isOverAllocated && (
-            <p className="mt-2 text-sm font-medium">
-              Your budget allocations exceed your available income. Consider reducing some budgets.
-            </p>
-          )}
         </div>
       )}
 
@@ -341,10 +324,10 @@ export default function BudgetPage() {
         <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              How Your {formatCurrency(monthlyIncome)}/month is Allocated
+              Budget Breakdown
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Visual breakdown of your monthly income
+              How your {formatCurrency(monthlyIncome)}/month is allocated
             </p>
           </div>
 
@@ -393,7 +376,7 @@ export default function BudgetPage() {
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded bg-slate-500" />
                 <span className="text-gray-600 dark:text-gray-400">Rent</span>
-                <span className="font-semibold text-gray-900 dark:text-white">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                   {formatCurrency(budgetSummary.rentAmount)}
                 </span>
                 <span className="text-gray-400 dark:text-gray-500">
@@ -405,7 +388,7 @@ export default function BudgetPage() {
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded bg-slate-400" />
                 <span className="text-gray-600 dark:text-gray-400">Utilities</span>
-                <span className="font-semibold text-gray-900 dark:text-white">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                   {formatCurrency(budgetSummary.utilitiesAmount)}
                 </span>
                 <span className="text-gray-400 dark:text-gray-500">
@@ -417,7 +400,7 @@ export default function BudgetPage() {
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded bg-emerald-500" />
                 <span className="text-gray-600 dark:text-gray-400">Savings</span>
-                <span className="font-semibold text-gray-900 dark:text-white">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                   {formatCurrency(savingsGoal)}
                 </span>
                 <span className="text-gray-400 dark:text-gray-500">
@@ -429,7 +412,7 @@ export default function BudgetPage() {
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded bg-purple-500" />
                 <span className="text-gray-600 dark:text-gray-400">Budgets</span>
-                <span className="font-semibold text-gray-900 dark:text-white">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                   {formatCurrency(totalBudgetAllocations)}
                 </span>
                 <span className="text-gray-400 dark:text-gray-500">
@@ -441,7 +424,7 @@ export default function BudgetPage() {
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded bg-orange-400" />
                 <span className="text-gray-600 dark:text-gray-400">Discretionary</span>
-                <span className="font-semibold text-gray-900 dark:text-white">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                   {formatCurrency(remainingDiscretionary)}
                 </span>
                 <span className="text-gray-400 dark:text-gray-500">
@@ -450,21 +433,6 @@ export default function BudgetPage() {
               </div>
             )}
           </div>
-
-          {/* Hard Expenses callout */}
-          {fixedExpenses > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-gray-500 dark:text-gray-400">Hard Expenses (non-negotiable):</span>
-                <span className="font-semibold text-gray-900 dark:text-white">
-                  {formatCurrency(fixedExpenses)}
-                </span>
-                <span className="text-gray-400 dark:text-gray-500">
-                  ({Math.round((fixedExpenses / monthlyIncome) * 100)}% of income)
-                </span>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

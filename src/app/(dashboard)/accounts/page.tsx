@@ -94,26 +94,18 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Accounts</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Manage your connected bank accounts
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          {accounts.length > 0 && (
-            <button
-              onClick={syncTransactions}
-              disabled={isSyncing}
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 w-full sm:w-auto"
-            >
-              {isSyncing ? "Syncing..." : "Sync Transactions"}
-            </button>
-          )}
-          <PlaidLinkButton />
-        </div>
+      {/* Header Actions */}
+      <div className="flex justify-end gap-2 sm:gap-3">
+        {accounts.length > 0 && (
+          <button
+            onClick={syncTransactions}
+            disabled={isSyncing}
+            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+          >
+            {isSyncing ? "Syncing..." : "Sync Transactions"}
+          </button>
+        )}
+        <PlaidLinkButton />
       </div>
 
       {/* Summary Cards */}

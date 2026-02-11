@@ -36,7 +36,8 @@ function getStartOfMonth(): string {
 }
 
 function getMonthName(): string {
-  return new Date().toLocaleString("default", { month: "long" });
+  const now = new Date();
+  return now.toLocaleString("default", { month: "long", year: "numeric" });
 }
 
 export default function TransactionsPage() {
@@ -45,6 +46,7 @@ export default function TransactionsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [showAllTime, setShowAllTime] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(20);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
@@ -102,59 +104,12 @@ export default function TransactionsPage() {
     );
   }
 
+  // Limit displayed transactions
+  const displayedTransactions = filteredTransactions.slice(0, displayLimit);
+  const hasMore = filteredTransactions.length > displayLimit;
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-            {showAllTime ? "All Transactions" : `${getMonthName()} Transactions`}
-          </h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {showAllTime
-              ? "Viewing all transaction history"
-              : `Showing transactions from ${getMonthName()} ${new Date().getFullYear()}`}
-          </p>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <button
-            onClick={() => setShowAllTime(!showAllTime)}
-            className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex-1 sm:flex-initial"
-          >
-            {showAllTime ? (
-              <>
-                <CalendarIcon />
-                This Month
-              </>
-            ) : (
-              <>
-                <HistoryIcon />
-                View All
-              </>
-            )}
-          </button>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 flex-1 sm:flex-initial"
-          >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            Add Transaction
-          </button>
-        </div>
-      </div>
-
       {/* Summary Cards */}
       <div className="grid gap-6 md:grid-cols-3">
         <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
@@ -183,49 +138,65 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setFilter("all")}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            filter === "all"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-          }`}
-        >
-          All ({total})
-        </button>
-        <button
-          onClick={() => setFilter("income")}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            filter === "income"
-              ? "bg-green-600 text-white"
-              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-          }`}
-        >
-          Income
-        </button>
-        <button
-          onClick={() => setFilter("expense")}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            filter === "expense"
-              ? "bg-red-600 text-white"
-              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-          }`}
-        >
-          Expenses
-        </button>
+      {/* Filters and Actions */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setFilter("all")}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              filter === "all"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+            }`}
+          >
+            All ({total})
+          </button>
+          <button
+            onClick={() => setFilter("income")}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              filter === "income"
+                ? "bg-green-600 text-white"
+                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+            }`}
+          >
+            Income
+          </button>
+          <button
+            onClick={() => setFilter("expense")}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              filter === "expense"
+                ? "bg-red-600 text-white"
+                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+            }`}
+          >
+            Expenses
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAllTime(!showAllTime)}
+            className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+          >
+            {showAllTime ? "All time" : getMonthName()}
+          </button>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Add Transaction
+          </button>
+        </div>
       </div>
 
       {/* Transactions List */}
-      {filteredTransactions.length === 0 ? (
+      {displayedTransactions.length === 0 ? (
         <div className="rounded-lg bg-white dark:bg-gray-800 p-12 text-center shadow">
           <p className="text-gray-500 dark:text-gray-400">No transactions found.</p>
         </div>
       ) : (
         <div className="rounded-lg bg-white dark:bg-gray-800 shadow">
           <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredTransactions.map((transaction) => (
+            {displayedTransactions.map((transaction) => (
               <li key={transaction.id} className="p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <div className="flex items-start sm:items-center justify-between gap-3">
                   <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
@@ -288,6 +259,15 @@ export default function TransactionsPage() {
               </li>
             ))}
           </ul>
+          {/* Load More Button */}
+          {hasMore && (
+            <button
+              onClick={() => setDisplayLimit((prev) => prev + 20)}
+              className="w-full py-3 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+            >
+              Load more...
+            </button>
+          )}
         </div>
       )}
 
@@ -334,18 +314,3 @@ function EditIcon() {
   );
 }
 
-function CalendarIcon() {
-  return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-  );
-}
-
-function HistoryIcon() {
-  return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
-}

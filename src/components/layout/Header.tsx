@@ -9,22 +9,27 @@ export function Header() {
   const pathname = usePathname();
   const { openMobile } = useSidebar();
 
-  const getPageTitle = () => {
+  const getPageInfo = () => {
     if (pathname === "/dashboard") {
-      return `Welcome back${session?.user?.name ? `, ${session.user.name}` : ""}!`;
+      return {
+        title: `Welcome back${session?.user?.name ? `, ${session.user.name}` : ""}!`,
+        subtitle: "Your financial overview at a glance",
+      };
     }
 
-    const titles: Record<string, string> = {
-      "/transactions": "Transactions",
-      "/accounts": "Accounts",
-      "/budget": "Budget",
-      "/net-worth": "Net Worth",
-      "/settings": "Settings",
-      "/settings/income": "Income Settings",
+    const pages: Record<string, { title: string; subtitle: string }> = {
+      "/transactions": { title: "Transactions", subtitle: "View and manage your transaction history" },
+      "/accounts": { title: "Accounts", subtitle: "Manage your connected bank accounts" },
+      "/budget": { title: "Budget", subtitle: "Track your spending against your budget" },
+      "/net-worth": { title: "Net Worth", subtitle: "Track your wealth over time" },
+      "/settings": { title: "Settings", subtitle: "Configure your budget settings" },
+      "/settings/income": { title: "Income Settings", subtitle: "Set up your income and monthly obligations" },
     };
 
-    return titles[pathname] || "Better Budget";
+    return pages[pathname] || { title: "Better Budget", subtitle: "" };
   };
+
+  const pageInfo = getPageInfo();
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 md:px-6">
@@ -37,9 +42,16 @@ export function Header() {
         >
           <MenuIcon className="h-6 w-6" />
         </button>
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white truncate">
-          {getPageTitle()}
-        </h1>
+        <div className="min-w-0">
+          <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white truncate">
+            {pageInfo.title}
+          </h1>
+          {pageInfo.subtitle && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate hidden sm:block">
+              {pageInfo.subtitle}
+            </p>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-2 md:gap-4">
         {session?.user && (
