@@ -216,6 +216,7 @@ export async function GET() {
         savingsGoal: Math.round(monthlySavingsGoal * 100) / 100,
         remainingDiscretionary: Math.round(remainingDiscretionary * 100) / 100,
         dailyDiscretionary: Math.round(dailyDiscretionary * 100) / 100,
+        daysRemaining: daysRemainingInMonth,
         isOverAllocated: remainingDiscretionary < 0,
         totalCurrentSpending: Math.round(totalCurrentSpending * 100) / 100,
         goalsCount: activeGoals.length,

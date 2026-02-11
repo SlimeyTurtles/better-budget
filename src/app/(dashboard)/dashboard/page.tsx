@@ -98,6 +98,7 @@ export default function DashboardPage() {
     totalBudgetAllocations: number;
     remainingDiscretionary: number;
     dailyDiscretionary: number;
+    daysRemaining: number;
     totalCurrentSpending: number;
     isOverAllocated: boolean;
   } | null>(null);
@@ -179,6 +180,7 @@ export default function DashboardPage() {
           totalBudgetAllocations: budgetSummaryData.summary.totalBudgetAllocations,
           remainingDiscretionary: budgetSummaryData.summary.remainingDiscretionary,
           dailyDiscretionary: budgetSummaryData.summary.dailyDiscretionary,
+          daysRemaining: budgetSummaryData.summary.daysRemaining,
           totalCurrentSpending: budgetSummaryData.summary.totalCurrentSpending,
           isOverAllocated: budgetSummaryData.summary.isOverAllocated,
         });
@@ -241,13 +243,14 @@ export default function DashboardPage() {
           totalBudgetAllocations: budgetSummary.totalBudgetAllocations,
           remainingDiscretionary: budgetSummary.remainingDiscretionary,
           dailyDiscretionary: budgetSummary.dailyDiscretionary,
+          daysRemaining: budgetSummary.daysRemaining,
           totalCurrentSpending: budgetSummary.totalCurrentSpending,
           percentUsed: budgetSummary.totalBudgetAllocations > 0
             ? Math.round((budgetSummary.totalCurrentSpending / budgetSummary.totalBudgetAllocations) * 100)
             : 0,
           isOverAllocated: budgetSummary.isOverAllocated,
         }
-      : { totalMonthlyIncome: 0, totalBudgetAllocations: 0, remainingDiscretionary: 0, dailyDiscretionary: 0, totalCurrentSpending: 0, percentUsed: 0, isOverAllocated: false },
+      : { totalMonthlyIncome: 0, totalBudgetAllocations: 0, remainingDiscretionary: 0, dailyDiscretionary: 0, daysRemaining: 0, totalCurrentSpending: 0, percentUsed: 0, isOverAllocated: false },
   };
 
   // Add budget goal data

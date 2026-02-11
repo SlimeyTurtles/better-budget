@@ -10,46 +10,46 @@ interface BudgetTotalRemainingCardProps {
 export function BudgetTotalRemainingCard({ data }: BudgetTotalRemainingCardProps) {
   const isOverAllocated = data.isOverAllocated;
   const isWarning = data.percentUsed >= 80 && !isOverAllocated;
-  const remainingPercent = Math.max(0, 100 - Math.min(data.percentUsed, 100));
 
-  const getBgColor = () => {
-    if (isOverAllocated) return "bg-red-500";
-    if (isWarning) return "bg-amber-500";
-    return "bg-emerald-500";
+  const getGradient = () => {
+    if (isOverAllocated) return "bg-gradient-to-r from-red-500 to-red-600";
+    if (isWarning) return "bg-gradient-to-r from-amber-500 to-amber-600";
+    return "bg-gradient-to-r from-green-500 to-green-600";
   };
 
-  return (
-    <div className={`rounded-xl p-5 shadow-lg text-white ${getBgColor()} h-full flex flex-col`}>
-      {/* Main message */}
-      <div className="flex-1">
-        <p className="text-sm font-medium opacity-90">
-          {isOverAllocated ? "Over budget by" : "You have"}
-        </p>
-        <p className="text-3xl font-bold mt-1">
-          {formatCurrency(Math.abs(data.remainingDiscretionary))}
-        </p>
-        <p className="text-sm opacity-90 mt-0.5">
-          {isOverAllocated ? "over your allocations" : "left for discretionary"}
-        </p>
-      </div>
+  const weeklyDiscretionary = data.dailyDiscretionary * 7;
 
-      {/* Budget usage bar */}
-      <div className="mt-4">
-        <div className="flex justify-between text-xs mb-1.5">
-          <span className="opacity-80">
-            {formatCurrency(data.totalCurrentSpending)} spent
-          </span>
-          <span className="opacity-80">
-            {formatCurrency(data.dailyDiscretionary)}/day
-          </span>
+  return (
+    <div className={`rounded-lg p-6 text-white shadow ${getGradient()}`}>
+      <h3 className="text-lg font-semibold">
+        {isOverAllocated ? "Over Budget" : "Remaining Discretionary"}
+      </h3>
+      <p className="text-sm opacity-80 mt-1">
+        After fixed expenses, budget allocations, and savings goal
+      </p>
+      <div className="mt-4 grid gap-4 md:grid-cols-3">
+        <div>
+          <p className="opacity-80">Total Remaining</p>
+          <p className="text-3xl font-bold">
+            {formatCurrency(Math.abs(data.remainingDiscretionary))}
+          </p>
         </div>
-        <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-white/80 rounded-full transition-all duration-500"
-            style={{ width: `${100 - remainingPercent}%` }}
-          />
+        <div>
+          <p className="opacity-80">Daily Allowance</p>
+          <p className="text-3xl font-bold">
+            {formatCurrency(Math.abs(data.dailyDiscretionary))}
+          </p>
+        </div>
+        <div>
+          <p className="opacity-80">Weekly Allowance</p>
+          <p className="text-3xl font-bold">
+            {formatCurrency(Math.abs(weeklyDiscretionary))}
+          </p>
         </div>
       </div>
+      <p className="mt-4 text-sm opacity-80">
+        Based on {data.daysRemaining} days remaining this month
+      </p>
     </div>
   );
 }
