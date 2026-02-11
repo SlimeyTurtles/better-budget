@@ -137,6 +137,7 @@ export interface BudgetTotalRemainingData {
   totalBudgetAllocations: number;
   remainingDiscretionary: number;
   dailyDiscretionary: number;
+  daysRemaining: number;
   totalCurrentSpending: number;
   percentUsed: number;
   isOverAllocated: boolean;
