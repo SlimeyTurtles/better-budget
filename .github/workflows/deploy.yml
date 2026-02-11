@@ -19,6 +19,7 @@ jobs:
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             cd ${{ secrets.PROJECT_PATH }}
+            git config --global --add safe.directory ${{ secrets.PROJECT_PATH }}
             echo "=== Current git status ==="
             git status
             echo "=== Pulling latest changes ==="
