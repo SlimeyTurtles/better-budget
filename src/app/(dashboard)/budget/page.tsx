@@ -336,40 +336,150 @@ export default function BudgetPage() {
         </div>
       )}
 
-      {/* Budget Allocation Cards */}
+      {/* Income Breakdown Visualization */}
       {monthlyIncome > 0 && (
-        <div>
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Budget Breakdown
+              How Your {formatCurrency(monthlyIncome)}/month is Allocated
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              How your {formatCurrency(monthlyIncome)}/month is allocated
+              Visual breakdown of your monthly income
             </p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {/* Fixed Expenses */}
+
+          {/* Stacked Bar */}
+          <div className="h-8 rounded-full overflow-hidden flex bg-gray-200 dark:bg-gray-700 mb-4">
             {budgetSummary?.rentAmount && budgetSummary.rentAmount > 0 && (
-              <BudgetCircleCard
-                name="Rent"
-                allocated={budgetSummary.rentAmount}
-                spent={budgetSummary.rentAmount}
-                periodLabel="Monthly"
-                color="blue"
-                isFixedExpense
+              <div
+                className="bg-slate-500 h-full transition-all duration-500"
+                style={{ width: `${(budgetSummary.rentAmount / monthlyIncome) * 100}%` }}
+                title={`Rent: ${formatCurrency(budgetSummary.rentAmount)}`}
               />
             )}
             {budgetSummary?.utilitiesAmount && budgetSummary.utilitiesAmount > 0 && (
-              <BudgetCircleCard
-                name="Utilities"
-                allocated={budgetSummary.utilitiesAmount}
-                spent={budgetSummary.utilitiesAmount}
-                periodLabel="Monthly"
-                color="blue"
-                isFixedExpense
+              <div
+                className="bg-slate-400 h-full transition-all duration-500"
+                style={{ width: `${(budgetSummary.utilitiesAmount / monthlyIncome) * 100}%` }}
+                title={`Utilities: ${formatCurrency(budgetSummary.utilitiesAmount)}`}
               />
             )}
+            {savingsGoal > 0 && (
+              <div
+                className="bg-emerald-500 h-full transition-all duration-500"
+                style={{ width: `${(savingsGoal / monthlyIncome) * 100}%` }}
+                title={`Savings: ${formatCurrency(savingsGoal)}`}
+              />
+            )}
+            {totalBudgetAllocations > 0 && (
+              <div
+                className="bg-purple-500 h-full transition-all duration-500"
+                style={{ width: `${(totalBudgetAllocations / monthlyIncome) * 100}%` }}
+                title={`Budget Allocations: ${formatCurrency(totalBudgetAllocations)}`}
+              />
+            )}
+            {remainingDiscretionary > 0 && (
+              <div
+                className="bg-orange-400 h-full transition-all duration-500"
+                style={{ width: `${(remainingDiscretionary / monthlyIncome) * 100}%` }}
+                title={`Discretionary: ${formatCurrency(remainingDiscretionary)}`}
+              />
+            )}
+          </div>
 
+          {/* Legend */}
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            {budgetSummary?.rentAmount && budgetSummary.rentAmount > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-slate-500" />
+                <span className="text-gray-600 dark:text-gray-400">Rent</span>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {formatCurrency(budgetSummary.rentAmount)}
+                </span>
+                <span className="text-gray-400 dark:text-gray-500">
+                  ({Math.round((budgetSummary.rentAmount / monthlyIncome) * 100)}%)
+                </span>
+              </div>
+            )}
+            {budgetSummary?.utilitiesAmount && budgetSummary.utilitiesAmount > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-slate-400" />
+                <span className="text-gray-600 dark:text-gray-400">Utilities</span>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {formatCurrency(budgetSummary.utilitiesAmount)}
+                </span>
+                <span className="text-gray-400 dark:text-gray-500">
+                  ({Math.round((budgetSummary.utilitiesAmount / monthlyIncome) * 100)}%)
+                </span>
+              </div>
+            )}
+            {savingsGoal > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-emerald-500" />
+                <span className="text-gray-600 dark:text-gray-400">Savings</span>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {formatCurrency(savingsGoal)}
+                </span>
+                <span className="text-gray-400 dark:text-gray-500">
+                  ({Math.round((savingsGoal / monthlyIncome) * 100)}%)
+                </span>
+              </div>
+            )}
+            {totalBudgetAllocations > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-purple-500" />
+                <span className="text-gray-600 dark:text-gray-400">Budgets</span>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {formatCurrency(totalBudgetAllocations)}
+                </span>
+                <span className="text-gray-400 dark:text-gray-500">
+                  ({Math.round((totalBudgetAllocations / monthlyIncome) * 100)}%)
+                </span>
+              </div>
+            )}
+            {remainingDiscretionary > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-orange-400" />
+                <span className="text-gray-600 dark:text-gray-400">Discretionary</span>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {formatCurrency(remainingDiscretionary)}
+                </span>
+                <span className="text-gray-400 dark:text-gray-500">
+                  ({Math.round((remainingDiscretionary / monthlyIncome) * 100)}%)
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Hard Expenses callout */}
+          {fixedExpenses > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-gray-500 dark:text-gray-400">Hard Expenses (non-negotiable):</span>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {formatCurrency(fixedExpenses)}
+                </span>
+                <span className="text-gray-400 dark:text-gray-500">
+                  ({Math.round((fixedExpenses / monthlyIncome) * 100)}% of income)
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Spending Budgets */}
+      {monthlyIncome > 0 && (budgetGoals.length > 0 || remainingDiscretionary > 0) && (
+        <div>
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Spending Budgets
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Track your spending against your limits
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {/* Budget Goals */}
             {budgetGoals.map((goal) => (
               <BudgetCircleCard
@@ -386,18 +496,6 @@ export default function BudgetPage() {
                 color="purple"
               />
             ))}
-
-            {/* Savings Goal */}
-            {savingsGoal > 0 && (
-              <BudgetCircleCard
-                name="Savings"
-                allocated={savingsGoal}
-                spent={savingsGoal}
-                periodLabel="Monthly"
-                color="emerald"
-                isFixedExpense
-              />
-            )}
 
             {/* Discretionary */}
             {remainingDiscretionary > 0 && (
