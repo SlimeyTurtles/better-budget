@@ -20,47 +20,42 @@ export function BudgetCircleCard({
   isFixedExpense = false,
 }: BudgetCircleCardProps) {
   const remaining = allocated - spent;
+  const percentRemaining = allocated > 0 ? Math.round((remaining / allocated) * 100) : 0;
   const percentUsed = allocated > 0 ? Math.round((spent / allocated) * 100) : 0;
   const isOverBudget = spent > allocated;
-  const isWarning = percentUsed >= 80 && percentUsed <= 100;
+  const isLow = percentRemaining <= 20 && percentRemaining > 0;
+
+  // For the visual, show remaining amount as the filled portion
+  // Green = lots remaining (good), Yellow = getting low, Red = over budget
+  const displayPercent = isOverBudget ? 0 : Math.max(percentRemaining, 0);
 
   // SVG circle properties
   const size = 120;
   const strokeWidth = 10;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const progress = Math.min(percentUsed, 100);
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
+  const strokeDashoffset = circumference - (displayPercent / 100) * circumference;
 
-  // Color classes based on status
+  // Color classes based on remaining amount (inverted logic - more remaining = better)
   const getProgressColor = () => {
     if (isFixedExpense) return "stroke-blue-500";
     if (isOverBudget) return "stroke-red-500";
-    if (isWarning) return "stroke-yellow-500";
-    switch (color) {
-      case "blue": return "stroke-blue-500";
-      case "emerald": return "stroke-emerald-500";
-      case "orange": return "stroke-orange-500";
-      case "red": return "stroke-red-500";
-      default: return "stroke-purple-500";
-    }
+    if (isLow) return "stroke-yellow-500";
+    // Good status - plenty remaining
+    return "stroke-emerald-500";
   };
 
   const getTextColor = () => {
     if (isFixedExpense) return "text-blue-600 dark:text-blue-400";
     if (isOverBudget) return "text-red-600 dark:text-red-400";
-    if (isWarning) return "text-yellow-600 dark:text-yellow-400";
-    switch (color) {
-      case "blue": return "text-blue-600 dark:text-blue-400";
-      case "emerald": return "text-emerald-600 dark:text-emerald-400";
-      case "orange": return "text-orange-600 dark:text-orange-400";
-      case "red": return "text-red-600 dark:text-red-400";
-      default: return "text-purple-600 dark:text-purple-400";
-    }
+    if (isLow) return "text-yellow-600 dark:text-yellow-400";
+    return "text-emerald-600 dark:text-emerald-400";
   };
 
   const getBgColor = () => {
     if (isFixedExpense) return "bg-blue-50 dark:bg-blue-900/20";
+    if (isOverBudget) return "bg-red-50 dark:bg-red-900/20";
+    if (isLow) return "bg-yellow-50 dark:bg-yellow-900/20";
     switch (color) {
       case "blue": return "bg-blue-50 dark:bg-blue-900/20";
       case "emerald": return "bg-emerald-50 dark:bg-emerald-900/20";
@@ -70,22 +65,32 @@ export function BudgetCircleCard({
     }
   };
 
+  const getPeriodColor = () => {
+    switch (color) {
+      case "blue": return "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20";
+      case "emerald": return "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20";
+      case "orange": return "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20";
+      case "red": return "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20";
+      default: return "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20";
+    }
+  };
+
   return (
     <div className="rounded-xl bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-100 dark:border-gray-700">
       <div className="flex flex-col items-center">
-        {/* Circle Progress */}
+        {/* Circle showing REMAINING (not used) */}
         <div className="relative">
           <svg width={size} height={size} className="transform -rotate-90">
-            {/* Background circle */}
+            {/* Background circle - represents "empty/spent" */}
             <circle
               cx={size / 2}
               cy={size / 2}
               r={radius}
               fill="none"
               strokeWidth={strokeWidth}
-              className="stroke-gray-200 dark:stroke-gray-700"
+              className={isOverBudget ? "stroke-red-200 dark:stroke-red-900/50" : "stroke-gray-200 dark:stroke-gray-700"}
             />
-            {/* Progress circle */}
+            {/* Progress circle - represents "remaining" (fuller = better) */}
             <circle
               cx={size / 2}
               cy={size / 2}
@@ -98,12 +103,23 @@ export function BudgetCircleCard({
               className={`transition-all duration-500 ${getProgressColor()}`}
             />
           </svg>
-          {/* Center text */}
+          {/* Center text - show remaining amount */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className={`text-2xl font-bold ${getTextColor()}`}>
-              {percentUsed}%
-            </span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">used</span>
+            {isOverBudget ? (
+              <>
+                <span className="text-xl font-bold text-red-600 dark:text-red-400">
+                  -{formatCurrency(Math.abs(remaining))}
+                </span>
+                <span className="text-xs text-red-500 dark:text-red-400">over</span>
+              </>
+            ) : (
+              <>
+                <span className={`text-xl font-bold ${getTextColor()}`}>
+                  {formatCurrency(remaining)}
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">left</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -113,33 +129,25 @@ export function BudgetCircleCard({
             {name}
           </h3>
           {periodLabel && (
-            <span className={`text-xs px-2 py-0.5 rounded-full ${getBgColor()} ${getTextColor()} font-medium`}>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${isFixedExpense ? getBgColor() + " " + getTextColor() : getPeriodColor()} font-medium`}>
               {periodLabel}
             </span>
           )}
         </div>
 
-        {/* Amounts */}
+        {/* Spending info */}
         <div className="mt-2 text-center">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            <span className={`font-semibold ${getTextColor()}`}>
-              {formatCurrency(spent)}
-            </span>
-            {" / "}
-            {formatCurrency(allocated)}
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Spent {formatCurrency(spent)} of {formatCurrency(allocated)}
           </p>
-          <p className={`text-xs mt-1 ${
-            isOverBudget
-              ? "text-red-600 dark:text-red-400"
-              : remaining > 0
-                ? "text-green-600 dark:text-green-400"
-                : "text-gray-500 dark:text-gray-400"
-          }`}>
-            {isOverBudget
-              ? `${formatCurrency(Math.abs(remaining))} over`
-              : `${formatCurrency(remaining)} left`
-            }
-          </p>
+          {!isFixedExpense && (
+            <p className={`text-xs mt-1 font-medium ${getTextColor()}`}>
+              {isOverBudget
+                ? `${percentUsed}% of budget used`
+                : `${percentRemaining}% remaining`
+              }
+            </p>
+          )}
         </div>
       </div>
     </div>

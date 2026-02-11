@@ -52,7 +52,8 @@ model BankAccount {
 model BudgetGoal {
   id             String           @id
   userId         String
-  category       String
+  tagId          String?
+  category       String?
   periodType     BudgetPeriodType @default(MONTHLY)
   periodAmount   Decimal          @db.Decimal(19, 4)
   startDate      DateTime?        @db.Date
@@ -61,9 +62,11 @@ model BudgetGoal {
   isActive       Boolean          @default(true)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime
+  Tag            Tag?             @relation(fields: [tagId], references: [id])
   User           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, category])
+  @@index([tagId])
 }
 
 model IncomeConfig {
@@ -150,29 +153,59 @@ model Session {
   User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Tag {
+  id           String           @id @default(uuid())
+  userId       String
+  name         String
+  color        String?          @default("#6B7280")
+  isSystem     Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  User         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions TransactionTag[]
+  budgetGoals  BudgetGoal[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model TransactionTag {
+  id            String      @id @default(uuid())
+  transactionId String
+  tagId         String
+  createdAt     DateTime    @default(now())
+  Transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  Tag           Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([transactionId, tagId])
+  @@index([transactionId])
+  @@index([tagId])
+}
+
 model Transaction {
-  id                 String      @id
+  id                 String           @id
   userId             String
   bankAccountId      String
-  plaidTransactionId String?     @unique
-  amount             Decimal     @db.Decimal(19, 4)
-  isoCurrencyCode    String?     @default("USD")
-  date               DateTime    @db.Date
-  authorizedDate     DateTime?   @db.Date
+  plaidTransactionId String?          @unique
+  amount             Decimal          @db.Decimal(19, 4)
+  isoCurrencyCode    String?          @default("USD")
+  date               DateTime         @db.Date
+  authorizedDate     DateTime?        @db.Date
   name               String
   merchantName       String?
   category           String?
   categoryIconCode   String?
   personalCategory   String?
-  isIncome           Boolean     @default(false)
-  isPending          Boolean     @default(false)
-  isManual           Boolean     @default(false)
+  isIncome           Boolean          @default(false)
+  isPending          Boolean          @default(false)
+  isManual           Boolean          @default(false)
   paymentChannel     String?
   location           Json?
-  createdAt          DateTime    @default(now())
+  createdAt          DateTime         @default(now())
   updatedAt          DateTime
-  BankAccount        BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
-  User               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  BankAccount        BankAccount      @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  User               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags               TransactionTag[]
 
   @@index([bankAccountId])
   @@index([userId, date])
@@ -196,6 +229,7 @@ model User {
   PlaidItem        PlaidItem[]
   SavingsGoal      SavingsGoal[]
   Session          Session[]
+  Tag              Tag[]
   Transaction      Transaction[]
 }
 

@@ -341,43 +341,33 @@ export default function DashboardPage() {
       {showOnboarding && <OnboardingModal onComplete={handleOnboardingComplete} />}
 
       <div className="space-y-6">
-        {/* Dashboard Header with Edit Button */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Your financial overview at a glance
-            </p>
-          </div>
-          <button
-            onClick={() => setIsEditMode(!isEditMode)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isEditMode
-                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              />
-            </svg>
-            {isEditMode ? "Done" : "Edit"}
-          </button>
-        </div>
-
         {/* Configurable Quick Stats Cards */}
-        <DraggableCardGrid
-          cards={dashboardCards}
-          cardDataMap={cardDataMap}
-          isEditMode={isEditMode}
-          onCardsChange={handleCardsChange}
-          onRemoveCard={handleRemoveCard}
-          onEmergencyFundUpdate={handleEmergencyFundUpdate}
-        />
+        <div>
+          <DraggableCardGrid
+            cards={dashboardCards}
+            cardDataMap={cardDataMap}
+            isEditMode={isEditMode}
+            onCardsChange={handleCardsChange}
+            onRemoveCard={handleRemoveCard}
+            onEmergencyFundUpdate={handleEmergencyFundUpdate}
+          />
+          {/* Edit Cards Button */}
+          <div className="flex justify-end mt-2">
+            <button
+              onClick={() => setIsEditMode(!isEditMode)}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                isEditMode
+                  ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                  : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
+              }`}
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              {isEditMode ? "Done" : "Edit"}
+            </button>
+          </div>
+        </div>
 
         {/* Budget Trendlines Chart */}
         <div className="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">

@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { AddTransactionModal } from "@/components/transactions/AddTransactionModal";
 import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";
+import { TagBadge } from "@/components/ui/TagBadge";
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string | null;
+  isSystem?: boolean;
+}
 
 interface Transaction {
   id: string;
@@ -15,10 +23,21 @@ interface Transaction {
   isIncome: boolean;
   isPending: boolean;
   isManual: boolean;
+  tags: Tag[];
   bankAccount: {
     name: string;
     mask: string | null;
   };
+}
+
+function getStartOfMonth(): string {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+}
+
+function getMonthName(): string {
+  const now = new Date();
+  return now.toLocaleString("default", { month: "long", year: "numeric" });
 }
 
 export default function TransactionsPage() {
@@ -26,16 +45,19 @@ export default function TransactionsPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
+  const [showAllTime, setShowAllTime] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(20);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
-  async function fetchTransactions() {
+  const fetchTransactions = useCallback(async () => {
     try {
-      const response = await fetch("/api/transactions?limit=100");
+      setIsLoading(true);
+      const params = new URLSearchParams({ limit: "500" });
+      if (!showAllTime) {
+        params.set("startDate", getStartOfMonth());
+      }
+      const response = await fetch(`/api/transactions?${params.toString()}`);
       const data = await response.json();
       setTransactions(data.transactions || []);
       setTotal(data.total || 0);
@@ -44,7 +66,11 @@ export default function TransactionsPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [showAllTime]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
 
   const filteredTransactions = transactions.filter((t) => {
     if (filter === "income") return t.isIncome;
@@ -78,37 +104,12 @@ export default function TransactionsPage() {
     );
   }
 
+  // Limit displayed transactions
+  const displayedTransactions = filteredTransactions.slice(0, displayLimit);
+  const hasMore = filteredTransactions.length > displayLimit;
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            View and manage your transaction history
-          </p>
-        </div>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 w-full sm:w-auto"
-        >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          Add Transaction
-        </button>
-      </div>
-
       {/* Summary Cards */}
       <div className="grid gap-6 md:grid-cols-3">
         <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
@@ -137,49 +138,65 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setFilter("all")}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            filter === "all"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-          }`}
-        >
-          All ({total})
-        </button>
-        <button
-          onClick={() => setFilter("income")}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            filter === "income"
-              ? "bg-green-600 text-white"
-              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-          }`}
-        >
-          Income
-        </button>
-        <button
-          onClick={() => setFilter("expense")}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            filter === "expense"
-              ? "bg-red-600 text-white"
-              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-          }`}
-        >
-          Expenses
-        </button>
+      {/* Filters and Actions */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setFilter("all")}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              filter === "all"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+            }`}
+          >
+            All ({total})
+          </button>
+          <button
+            onClick={() => setFilter("income")}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              filter === "income"
+                ? "bg-green-600 text-white"
+                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+            }`}
+          >
+            Income
+          </button>
+          <button
+            onClick={() => setFilter("expense")}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              filter === "expense"
+                ? "bg-red-600 text-white"
+                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+            }`}
+          >
+            Expenses
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAllTime(!showAllTime)}
+            className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+          >
+            {showAllTime ? "All time" : getMonthName()}
+          </button>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Add Transaction
+          </button>
+        </div>
       </div>
 
       {/* Transactions List */}
-      {filteredTransactions.length === 0 ? (
+      {displayedTransactions.length === 0 ? (
         <div className="rounded-lg bg-white dark:bg-gray-800 p-12 text-center shadow">
           <p className="text-gray-500 dark:text-gray-400">No transactions found.</p>
         </div>
       ) : (
         <div className="rounded-lg bg-white dark:bg-gray-800 shadow">
           <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredTransactions.map((transaction) => (
+            {displayedTransactions.map((transaction) => (
               <li key={transaction.id} className="p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <div className="flex items-start sm:items-center justify-between gap-3">
                   <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
@@ -207,8 +224,14 @@ export default function TransactionsPage() {
                       </p>
                       <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
                         {formatDate(transaction.date)} • {transaction.bankAccount.name}
-                        {transaction.category && ` • ${transaction.category}`}
                       </p>
+                      {transaction.tags && transaction.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {transaction.tags.map((tag) => (
+                            <TagBadge key={tag.id} tag={tag} size="sm" />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
@@ -236,6 +259,15 @@ export default function TransactionsPage() {
               </li>
             ))}
           </ul>
+          {/* Load More Button */}
+          {hasMore && (
+            <button
+              onClick={() => setDisplayLimit((prev) => prev + 20)}
+              className="w-full py-3 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+            >
+              Load more...
+            </button>
+          )}
         </div>
       )}
 
@@ -281,3 +313,4 @@ function EditIcon() {
     </svg>
   );
 }
+

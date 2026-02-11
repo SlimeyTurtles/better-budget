@@ -11,6 +11,7 @@ const createTransactionSchema = z.object({
   name: z.string().min(1, "Name is required").max(255).trim(),
   date: z.string().transform((str) => new Date(str)),
   category: z.string().max(100).optional(),
+  tagIds: z.array(z.string()).optional(),
   isIncome: z.boolean(),
   bankAccountId: z.string().optional(),
 });
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const category = searchParams.get("category");
+    const tagId = searchParams.get("tagId");
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
@@ -49,8 +51,15 @@ export async function GET(request: Request) {
       }
     }
 
+    // Support both category (legacy) and tagId filtering
     if (category) {
       where.category = category;
+    }
+
+    if (tagId) {
+      where.tags = {
+        some: { tagId },
+      };
     }
 
     const [transactions, total] = await Promise.all([
@@ -61,6 +70,11 @@ export async function GET(request: Request) {
             select: {
               name: true,
               mask: true,
+            },
+          },
+          tags: {
+            include: {
+              Tag: true,
             },
           },
         },
@@ -76,6 +90,12 @@ export async function GET(request: Request) {
       ...t,
       bankAccount: t.BankAccount,
       BankAccount: undefined,
+      tags: t.tags.map((tt) => ({
+        id: tt.Tag.id,
+        name: tt.Tag.name,
+        color: tt.Tag.color,
+        isSystem: tt.Tag.isSystem,
+      })),
     }));
 
     return NextResponse.json({ transactions: transformedTransactions, total });
@@ -165,9 +185,24 @@ export async function POST(request: Request) {
       }
     }
 
+    const transactionId = randomUUID();
+
+    // If tagIds provided, verify they belong to the user
+    if (validatedData.tagIds && validatedData.tagIds.length > 0) {
+      const validTags = await prisma.tag.findMany({
+        where: {
+          id: { in: validatedData.tagIds },
+          userId: session.user.id,
+        },
+      });
+      if (validTags.length !== validatedData.tagIds.length) {
+        return NextResponse.json({ error: "Invalid tag IDs" }, { status: 400 });
+      }
+    }
+
     const transaction = await prisma.transaction.create({
       data: {
-        id: randomUUID(),
+        id: transactionId,
         userId: session.user.id,
         bankAccountId: targetAccountId,
         amount: validatedData.amount,
@@ -178,12 +213,23 @@ export async function POST(request: Request) {
         isManual: true,
         isPending: false,
         updatedAt: new Date(),
+        tags: validatedData.tagIds && validatedData.tagIds.length > 0 ? {
+          create: validatedData.tagIds.map((tagId) => ({
+            id: randomUUID(),
+            tagId,
+          })),
+        } : undefined,
       },
       include: {
         BankAccount: {
           select: {
             name: true,
             mask: true,
+          },
+        },
+        tags: {
+          include: {
+            Tag: true,
           },
         },
       },
@@ -194,6 +240,12 @@ export async function POST(request: Request) {
       ...transaction,
       bankAccount: transaction.BankAccount,
       BankAccount: undefined,
+      tags: transaction.tags.map((tt) => ({
+        id: tt.Tag.id,
+        name: tt.Tag.name,
+        color: tt.Tag.color,
+        isSystem: tt.Tag.isSystem,
+      })),
     };
 
     return NextResponse.json({ transaction: transformedTransaction }, { status: 201 });

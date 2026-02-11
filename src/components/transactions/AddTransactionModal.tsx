@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { TagInput } from "@/components/ui/TagInput";
 
 interface BankAccount {
   id: string;
@@ -8,11 +9,11 @@ interface BankAccount {
   mask: string | null;
 }
 
-interface BudgetGoal {
+interface Tag {
   id: string;
-  category: string;
-  periodAmount: number;
-  isActive: boolean;
+  name: string;
+  color: string | null;
+  isSystem?: boolean;
 }
 
 interface AddTransactionModalProps {
@@ -20,26 +21,6 @@ interface AddTransactionModalProps {
   onClose: () => void;
   onSuccess: () => void;
 }
-
-// Fallback categories if no budget goals exist
-const FALLBACK_EXPENSE_CATEGORIES = [
-  "Food & Dining",
-  "Groceries",
-  "Transportation",
-  "Shopping",
-  "Entertainment",
-  "Bills & Utilities",
-  "Other",
-];
-
-const INCOME_CATEGORIES = [
-  "Salary",
-  "Bonus",
-  "Freelance",
-  "Investment",
-  "Refund",
-  "Other Income",
-];
 
 export function AddTransactionModal({
   isOpen,
@@ -49,7 +30,8 @@ export function AddTransactionModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
-  const [budgetGoals, setBudgetGoals] = useState<BudgetGoal[]>([]);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
 
   // Get local date in YYYY-MM-DD format (avoid UTC timezone shift)
   const getLocalDateString = () => {
@@ -61,7 +43,6 @@ export function AddTransactionModal({
     name: "",
     amount: "",
     date: getLocalDateString(),
-    category: "",
     isIncome: false,
     bankAccountId: "",
   });
@@ -69,7 +50,7 @@ export function AddTransactionModal({
   useEffect(() => {
     if (isOpen) {
       fetchAccounts();
-      fetchBudgetGoals();
+      fetchTags();
     }
   }, [isOpen]);
 
@@ -85,36 +66,37 @@ export function AddTransactionModal({
     }
   }
 
-  async function fetchBudgetGoals() {
+  async function fetchTags() {
     try {
-      const response = await fetch("/api/budget-goals");
+      const response = await fetch("/api/tags");
       if (response.ok) {
         const data = await response.json();
-        setBudgetGoals(data.goals || []);
+        setAvailableTags(data.tags || []);
       }
     } catch (error) {
-      console.error("Error fetching budget goals:", error);
+      console.error("Error fetching tags:", error);
     }
   }
 
-  // Get categories based on transaction type
-  const getCategories = () => {
-    if (formData.isIncome) {
-      return INCOME_CATEGORIES;
-    }
-    // For expenses, use budget goals if available, otherwise fallback
-    if (budgetGoals.length > 0) {
-      const budgetCategories = budgetGoals
-        .filter((g) => g.isActive)
-        .map((g) => g.category);
-      // Add "Other" if not already in budget categories
-      if (!budgetCategories.includes("Other")) {
-        budgetCategories.push("Other");
+  async function handleCreateTag(name: string): Promise<Tag | null> {
+    try {
+      const response = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const newTag = data.tag;
+        setAvailableTags((prev) => [...prev, newTag]);
+        return newTag;
       }
-      return budgetCategories;
+    } catch (error) {
+      console.error("Error creating tag:", error);
     }
-    return FALLBACK_EXPENSE_CATEGORIES;
-  };
+    return null;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -129,7 +111,7 @@ export function AddTransactionModal({
           name: formData.name,
           amount: Number(formData.amount),
           date: formData.date,
-          category: formData.category || undefined,
+          tagIds: selectedTags.map((t) => t.id),
           isIncome: formData.isIncome,
           bankAccountId: formData.bankAccountId || undefined,
         }),
@@ -145,10 +127,10 @@ export function AddTransactionModal({
         name: "",
         amount: "",
         date: getLocalDateString(),
-        category: "",
         isIncome: false,
         bankAccountId: "",
       });
+      setSelectedTags([]);
       onSuccess();
       onClose();
     } catch (err) {
@@ -279,29 +261,18 @@ export function AddTransactionModal({
             />
           </div>
 
-          {/* Category */}
+          {/* Tags */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Category {!formData.isIncome && budgetGoals.length > 0 && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal ml-1">
-                  (from your budgets)
-                </span>
-              )}
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Tags
             </label>
-            <select
-              value={formData.category}
-              onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value })
-              }
-              className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">Select a category (optional)</option>
-              {getCategories().map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+            <TagInput
+              selectedTags={selectedTags}
+              availableTags={availableTags}
+              onChange={setSelectedTags}
+              onCreateTag={handleCreateTag}
+              placeholder="Add tags (optional)..."
+            />
           </div>
 
           {/* Account (optional) */}
