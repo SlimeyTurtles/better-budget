@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { SpendingOverTimeChart } from "@/components/charts/SpendingOverTimeChart";
 import { CategoryBreakdownChart } from "@/components/charts/CategoryBreakdownChart";
-import { BudgetModal, BudgetList, BudgetCircleCard } from "@/components/budget";
+import { BudgetModal, BudgetList, BudgetCircleCard, DailyStreakTracker } from "@/components/budget";
 import { formatCurrency } from "@/lib/utils";
 import type { BudgetPeriodType, EnhancedBudgetGoal, BudgetSummary } from "@/types";
 
@@ -318,6 +318,9 @@ export default function BudgetPage() {
           </p>
         </div>
       )}
+
+      {/* Daily Budget Streak Tracker */}
+      {monthlyIncome > 0 && <DailyStreakTracker />}
 
       {/* Income Breakdown Visualization */}
       {monthlyIncome > 0 && (
